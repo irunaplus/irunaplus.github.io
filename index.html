@@ -289,7 +289,7 @@
 
 <div id="sb-root"></div>
 <script>
-  fetch('sidebar.html')
+  fetch('sidebar.html?v=2', { cache: 'no-cache' })
     .then(r => r.text())
     .then(html => {
       const root = document.getElementById('sb-root');

@@ -486,7 +486,7 @@ td:first-child { font-family: 'Cinzel', serif; font-weight: 600; font-size: 12px
 <body>
 <div id="sb-root"></div>
 <script>
-  fetch('sidebar.html')
+  fetch('sidebar.html?v=2', { cache: 'no-cache' })
     .then(r => r.text())
     .then(html => {
       const root = document.getElementById('sb-root');

@@ -23,7 +23,7 @@
     initSidebar() {
       const root = document.getElementById('sb-root');
       if (!root) return;
-      fetch('sidebar.html')
+      fetch('sidebar.html?v=2', { cache: 'no-cache' })
         .then(r => r.text())
         .then(html => {
           root.innerHTML = html;
