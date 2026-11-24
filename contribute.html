@@ -83,6 +83,33 @@
   .picker-row:hover { border-color: var(--accent); background: var(--card-hover); }
 
   .type-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .helper-toolbar {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;
+  }
+  .helper-btn {
+    padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+    background: rgba(63,200,249,0.1); border: 1px solid rgba(63,200,249,0.32);
+    color: var(--accent); cursor: pointer; font-family: inherit; transition: all .15s;
+  }
+  .helper-btn:hover { background: rgba(63,200,249,0.22); }
+  .obtain-preview {
+    margin-top: 6px; padding: 9px 12px; border-radius: 8px;
+    background: rgba(212,168,67,0.06); border: 1px solid rgba(212,168,67,0.22);
+    font-size: 13px; color: var(--text-dim); line-height: 1.65;
+  }
+  .obtain-preview a { color: var(--accent); text-decoration: underline; }
+  .obtain-preview .pv-npc { color: var(--gold-light); border-bottom: 1px dashed var(--gold); }
+  .sub-skill-box {
+    background: rgba(15,23,42,0.75); border: 1px solid rgba(180,130,255,0.35);
+    border-radius: 9px; padding: 12px; margin-top: 8px;
+  }
+  .sub-skill-item {
+    background: rgba(24,31,52,0.85); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px; margin-top: 8px;
+    display: flex; flex-direction: column; gap: 7px;
+  }
+  .sub-skill-top { display: grid; grid-template-columns: 1fr 140px 1fr 34px; gap: 6px; }
+  @media (max-width: 680px) { .sub-skill-top { grid-template-columns: 1fr 1fr; } }
   .submit-bar {
     display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px;
   }
@@ -142,7 +169,13 @@
     </div>
     <div class="field">
       <label for="job-obtain">วิธีเปลี่ยนอาชีพ (เลเวล / NPC / สถานที่)</label>
-      <textarea id="job-obtain" placeholder="เช่น เลเวล 140 เปลี่ยนอาชีพกับ NPC ... ที่เมือง ..."></textarea>
+      <div class="helper-toolbar">
+        <button type="button" class="helper-btn" onclick="openJobLinkModal()">🔗 แทรกลิงก์ไปหน้าอาชีพอื่น</button>
+        <button type="button" class="helper-btn" onclick="openNpcLinkModal()">📍 แทรกจุด NPC (กดดูรูปตำแหน่งได้)</button>
+        <button type="button" class="helper-btn" onclick="insertLineBreak()">↵ ขึ้นบรรทัดใหม่</button>
+      </div>
+      <textarea id="job-obtain" placeholder="เช่น เลเวล 140 เปลี่ยนอาชีพกับ NPC ... ที่เมือง ..." oninput="updateObtainPreview(); updateJsonPreview()"></textarea>
+      <div class="obtain-preview" id="obtain-preview" style="display:none"></div>
     </div>
   </div>
 
@@ -212,21 +245,21 @@
   </div>
 </div>
 
-<!-- New Skill Modal -->
+<!-- New / Edit Skill Modal -->
 <div class="db-modal-backdrop" id="new-skill-modal">
   <div class="db-modal">
     <div class="db-modal-head">
-      <h3>✨ สร้างสกิลใหม่เข้าฐานข้อมูล</h3>
+      <h3 id="ns-modal-title">✨ สร้างสกิลใหม่เข้าฐานข้อมูล</h3>
       <button class="db-modal-close" onclick="closeModal('new-skill-modal')">✕</button>
     </div>
     <div class="db-modal-body">
       <div class="field">
         <label>ชื่อสกิล (ภาษาไทย) *</label>
-        <input class="db-input" id="ns-name" type="text" placeholder="เช่น การ์เดียน">
+        <input class="db-input" id="ns-name" type="text" placeholder="เช่น การ์เดียน, เบบี้วูฟ">
       </div>
       <div class="field">
-        <label>รหัสสกิลภาษาอังกฤษ (skillId) * — ตัวพิมพ์เล็กกับ _</label>
-        <input class="db-input" id="ns-id" type="text" placeholder="เช่น guardian (ไม่เว้นวรรค)">
+        <label>ชื่อภาษาอังกฤษ / รหัสสกิล (ไม่บังคับ — ปล่อยว่างไว้ระบบจะสร้างให้อัตโนมัติ)</label>
+        <input class="db-input" id="ns-id" type="text" placeholder="เช่น guardian (หรือปล่อยว่างได้เลย)">
       </div>
       <div class="field">
         <label>ประเภทสกิล (เลือกได้หลายข้อ หรือพิมพ์เพิ่มประเภทใหม่ได้)</label>
@@ -240,7 +273,42 @@
         <label>คำอธิบายสกิล / สูตร / การใช้ MP</label>
         <textarea id="ns-desc" placeholder="อธิบายผลของสกิล ค่า MP ที่ใช้ ระยะเวลา ฯลฯ"></textarea>
       </div>
-      <button type="button" class="btn-primary-big" style="width:100%" onclick="saveNewSkill()">✅ เพิ่มสกิลนี้ลงในอาชีพ</button>
+
+      <!-- Sub-skills (Summon / Combo skills) -->
+      <div class="sub-skill-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+          <strong style="color:var(--purple);font-size:13.5px">✦ สกิลย่อย (เช่น สกิลของตัวอัญเชิญ / ท่าต่อเนื่อง — ถ้ามี)</strong>
+          <button type="button" class="db-btn secondary" style="padding:4px 10px;font-size:12px" onclick="addSubSkillDraft()">+ เพิ่มสกิลย่อย</button>
+        </div>
+        <div id="ns-subskills-list"></div>
+      </div>
+
+      <button type="button" class="btn-primary-big" style="width:100%;margin-top:14px" onclick="saveNewSkill()">✅ บันทึกสกิลนี้ลงในอาชีพ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Visual Link Builder Modal (Job Link & NPC Link — No HTML needed!) -->
+<div class="db-modal-backdrop" id="link-helper-modal">
+  <div class="db-modal" style="max-width:520px">
+    <div class="db-modal-head">
+      <h3 id="lh-title">🔗 แทรกลิงก์</h3>
+      <button class="db-modal-close" onclick="closeModal('link-helper-modal')">✕</button>
+    </div>
+    <div class="db-modal-body">
+      <div class="field" id="lh-job-wrap">
+        <label>เลือกอาชีพที่ต้องการให้กดลิงก์ไปหา</label>
+        <select class="db-select" id="lh-job-select" onchange="syncJobLinkLabel()"></select>
+      </div>
+      <div class="field" id="lh-npc-wrap" style="display:none">
+        <label>เลือก NPC (กดที่ชื่อบนหน้าเว็บเพื่อดูรูปตำแหน่งได้)</label>
+        <select class="db-select" id="lh-npc-select" onchange="syncNpcLinkLabel()"></select>
+      </div>
+      <div class="field">
+        <label>ข้อความที่ต้องการแสดงบนหน้าเว็บ</label>
+        <input class="db-input" id="lh-label" type="text" placeholder="เช่น จำเป็นต้องเป็นนักรบฝึกหัดก่อน">
+      </div>
+      <button type="button" class="btn-primary-big" style="width:100%" onclick="confirmInsertLink()">✅ แทรกลงในช่องวิธีเปลี่ยนอาชีพ</button>
     </div>
   </div>
 </div>
@@ -310,11 +378,15 @@ const JOBS = [
 const OBTAIN_METHODS = ['เปลี่ยนอาชีพ', 'เควสต์', 'ไอเทมดรอป', 'ไอเทมซื้อร้านค้า'];
 
 let SKILLS_MASTER = {};
+let NPC_ID_MAP = {};
 let NEW_SKILLS = {};
 let JOB_CACHE = {};
 let CURRENT_JOB_KEY = '';
 let INHERITED_SKILLS = new Map(); // skillId -> { obtain: [...], from: label }
 let EDITOR_SKILLS = []; // [{ skillId, obtain: [{ method, lv, loc }] }]
+let SUB_SKILLS_DRAFT = []; // [{ name, type, req, desc }]
+let EDITING_SKILL_ID = '';
+let LINK_MODAL_MODE = 'job';
 
 function showToast(msg) {
   const el = document.getElementById('toast');
@@ -432,9 +504,21 @@ function getSkillMeta(skillId) {
 
 async function init() {
   try {
-    const r = await fetch('./data/skills.json');
-    if (r.ok) SKILLS_MASTER = await r.json();
+    const [r1, r2] = await Promise.all([
+      fetch('./data/skills.json'),
+      fetch('./data/NPC/npc_id_map.json').catch(() => null),
+    ]);
+    if (r1 && r1.ok) SKILLS_MASTER = await r1.json();
+    if (r2 && r2.ok) NPC_ID_MAP = await r2.json();
   } catch (_) {}
+
+  document.getElementById('lh-job-select').innerHTML = JOBS.map(j =>
+    `<option value="${j.key}">${j.label}</option>`
+  ).join('');
+  const npcEntries = Object.entries(NPC_ID_MAP || {});
+  document.getElementById('lh-npc-select').innerHTML = (npcEntries.length
+    ? npcEntries.map(([name, id]) => `<option value="${DB.esc(id)}" data-name="${DB.esc(name)}">${DB.esc(name)} (${DB.esc(id)})</option>`).join('')
+    : `<option value="warna" data-name="วาร์นา">วาร์นา (warna)</option>`);
 
   const jobSel = document.getElementById('job-select');
   jobSel.innerHTML = JOBS.map(j => `<option value="${j.key}">${j.label} (${j.key})</option>`).join('');
@@ -474,6 +558,77 @@ async function loadSelectedJob(key) {
 
   await refreshInherited();
   renderEditorSkills();
+  updateObtainPreview();
+}
+
+/* Visual Link Helper & Live Preview (Non-programmer friendly!) */
+function insertAtCursor(ta, text) {
+  const start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
+  const end = ta.selectionEnd != null ? ta.selectionEnd : ta.value.length;
+  ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = start + text.length;
+  updateObtainPreview();
+  updateJsonPreview();
+}
+function insertLineBreak() {
+  insertAtCursor(document.getElementById('job-obtain'), ' <br> ');
+}
+function openJobLinkModal() {
+  LINK_MODAL_MODE = 'job';
+  document.getElementById('lh-title').textContent = '🔗 แทรกลิงก์ไปหน้าอาชีพอื่น';
+  document.getElementById('lh-job-wrap').style.display = 'flex';
+  document.getElementById('lh-npc-wrap').style.display = 'none';
+  const parent = document.getElementById('inherit-select').value;
+  if (parent) document.getElementById('lh-job-select').value = parent;
+  syncJobLinkLabel();
+  document.getElementById('link-helper-modal').classList.add('open');
+}
+function syncJobLinkLabel() {
+  const key = document.getElementById('lh-job-select').value;
+  const meta = JOBS.find(j => j.key === key);
+  document.getElementById('lh-label').value = meta ? `จำเป็นต้องเป็น${meta.label}ก่อน` : '';
+}
+function openNpcLinkModal() {
+  LINK_MODAL_MODE = 'npc';
+  document.getElementById('lh-title').textContent = '📍 แทรกจุด NPC (กดดูรูปตำแหน่งได้)';
+  document.getElementById('lh-job-wrap').style.display = 'none';
+  document.getElementById('lh-npc-wrap').style.display = 'flex';
+  syncNpcLinkLabel();
+  document.getElementById('link-helper-modal').classList.add('open');
+}
+function syncNpcLinkLabel() {
+  const sel = document.getElementById('lh-npc-select');
+  const opt = sel.options[sel.selectedIndex];
+  const n = opt ? (opt.dataset.name || opt.textContent) : '';
+  document.getElementById('lh-label').value = n ? `${n} ที่...` : '';
+}
+function confirmInsertLink() {
+  const label = document.getElementById('lh-label').value.trim();
+  if (!label) { alert('กรุณากรอกข้อความที่ต้องการแสดง'); return; }
+  const ta = document.getElementById('job-obtain');
+  if (LINK_MODAL_MODE === 'job') {
+    const key = document.getElementById('lh-job-select').value;
+    insertAtCursor(ta, ` <a href='job.html?job=${key}'>${label}</a> `);
+  } else {
+    const npcId = document.getElementById('lh-npc-select').value;
+    insertAtCursor(ta, ` [${label}](${npcId}) `);
+  }
+  closeModal('link-helper-modal');
+  showToast('แทรกลิงก์เรียบร้อย!');
+}
+function updateObtainPreview() {
+  const raw = document.getElementById('job-obtain').value.trim();
+  const box = document.getElementById('obtain-preview');
+  if (!raw) { box.style.display = 'none'; return; }
+  let html = DB.esc(raw)
+    .replace(/&lt;br\s*\/?&gt;/gi, '<br>')
+    .replace(/&lt;a\s+href=(?:&#39;|'|&quot;)([^&'"]+)(?:&#39;|'|&quot;)&gt;([\s\S]*?)&lt;\/a&gt;/gi,
+      (_, href, text) => `<a href="${href}" target="_blank">🔗 ${text}</a>`)
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g,
+      (_, text) => `<span class="pv-npc">📍 ${text}</span>`);
+  box.innerHTML = `<div style="font-size:11px;color:var(--gold);margin-bottom:3px;font-weight:700">ตัวอย่างที่จะแสดงบนหน้าเว็บ:</div>${html}`;
+  box.style.display = 'block';
 }
 
 async function onInheritChange() {
@@ -560,15 +715,18 @@ function renderEditorSkills() {
     const m = getSkillMeta(s.skillId);
     const isInh = INHERITED_SKILLS.has(s.skillId);
     const isNew = Boolean(NEW_SKILLS[s.skillId]);
+    const subCount = (m.summonSkills || []).length;
     return `<div class="sk-editor-card">
       <div class="sk-editor-head">
         <div>
           <strong style="color:var(--gold-light);font-size:15px">${DB.esc(m.name)}</strong>
           <span class="badge" style="margin-left:6px">${DB.esc(s.skillId)}</span>
           ${isInh ? `<span class="badge purple" style="margin-left:4px">อัปเกรดต่อจากสกิลสืบทอด</span>` : ''}
-          ${isNew ? `<span class="badge green" style="margin-left:4px">สกิลใหม่</span>` : ''}
+          ${isNew ? `<span class="badge green" style="margin-left:4px">สร้าง/แก้ไขข้อมูล</span>` : ''}
+          ${subCount ? `<span class="badge purple" style="margin-left:4px">✦ ${subCount} สกิลย่อย</span>` : ''}
         </div>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" class="db-btn secondary" style="padding:4px 10px;font-size:12px" onclick="openEditSkillModal('${DB.esc(s.skillId).replace(/'/g,"\\'")}')">✏️ แก้รายละเอียด / สกิลย่อย</button>
           <button type="button" class="db-btn secondary" style="padding:4px 10px;font-size:12px" onclick="addObtainRow(${si})">+ เพิ่มเลเวล</button>
           <button type="button" class="icon-btn" onclick="removeSkill(${si})" title="ลบสกิลนี้">🗑️ ลบ</button>
         </div>
@@ -674,29 +832,99 @@ function addCustomSkillType() {
   showToast('เพิ่มประเภทสกิลใหม่ "' + val + '" แล้ว (จะส่งขออนุมัติพร้อมสกิล)');
 }
 
+function renderSubSkillsDraft() {
+  const box = document.getElementById('ns-subskills-list');
+  if (!SUB_SKILLS_DRAFT.length) {
+    box.innerHTML = `<div style="font-size:12px;color:var(--text-dim);margin-top:6px">ยังไม่มีสกิลย่อย (กด "+ เพิ่มสกิลย่อย" หากเป็นสกิลอัญเชิญหรือมีท่าต่อเนื่อง)</div>`;
+    return;
+  }
+  box.innerHTML = SUB_SKILLS_DRAFT.map((ss, idx) => `
+    <div class="sub-skill-item">
+      <div class="sub-skill-top">
+        <input class="db-input" style="min-width:0;padding:6px 8px;font-size:12.5px" type="text" placeholder="ชื่อสกิลย่อย *" value="${DB.esc(ss.name)}" oninput="SUB_SKILLS_DRAFT[${idx}].name=this.value">
+        <input class="db-input" style="min-width:0;padding:6px 8px;font-size:12.5px" type="text" placeholder="ประเภท (เช่น โจมตีเดี่ยว)" value="${DB.esc(ss.type)}" oninput="SUB_SKILLS_DRAFT[${idx}].type=this.value">
+        <input class="db-input" style="min-width:0;padding:6px 8px;font-size:12.5px" type="text" placeholder="เงื่อนไข (เช่น Lv.2 ขึ้นไป)" value="${DB.esc(ss.req)}" oninput="SUB_SKILLS_DRAFT[${idx}].req=this.value">
+        <button type="button" class="icon-btn" onclick="SUB_SKILLS_DRAFT.splice(${idx},1);renderSubSkillsDraft()" title="ลบสกิลย่อย">✕</button>
+      </div>
+      <input class="db-input" style="min-width:0;padding:6px 8px;font-size:12.5px" type="text" placeholder="คำอธิบายสกิลย่อย เช่น ความแรง สถานะผิดปกติ ดีเลย์..." value="${DB.esc(ss.desc)}" oninput="SUB_SKILLS_DRAFT[${idx}].desc=this.value">
+    </div>
+  `).join('');
+}
+
+function addSubSkillDraft() {
+  SUB_SKILLS_DRAFT.push({ name: '', type: 'โจมตีเดี่ยว', req: '', desc: '' });
+  renderSubSkillsDraft();
+}
+
 function openNewSkillModal() {
+  EDITING_SKILL_ID = '';
+  document.getElementById('ns-modal-title').textContent = '✨ สร้างสกิลใหม่เข้าฐานข้อมูล';
   document.getElementById('ns-name').value = '';
   document.getElementById('ns-id').value = '';
+  document.getElementById('ns-id').disabled = false;
   document.getElementById('ns-desc').value = '';
   document.getElementById('ns-custom-type').value = '';
+  SUB_SKILLS_DRAFT = [];
   renderSkillTypeChips(new Set());
+  renderSubSkillsDraft();
   document.getElementById('new-skill-modal').classList.add('open');
 }
+
+function openEditSkillModal(skillId) {
+  const m = getSkillMeta(skillId);
+  EDITING_SKILL_ID = skillId;
+  document.getElementById('ns-modal-title').textContent = '✏️ แก้ไขรายละเอียด / สกิลย่อย: ' + (m.name || skillId);
+  document.getElementById('ns-name').value = m.name || '';
+  document.getElementById('ns-id').value = skillId;
+  document.getElementById('ns-id').disabled = true;
+  document.getElementById('ns-desc').value = (m.desc || '').replace(/<br\s*\/?>/gi, '\n');
+  document.getElementById('ns-custom-type').value = '';
+  const typeArr = Array.isArray(m.type) ? m.type : (m.type ? String(m.type).split(',').map(x => x.trim()) : []);
+  renderSkillTypeChips(new Set(typeArr));
+  SUB_SKILLS_DRAFT = (m.summonSkills || []).map(ss => ({
+    name: ss.name || '',
+    type: ss.type || '',
+    req: ss.req || '',
+    desc: ss.desc || '',
+  }));
+  renderSubSkillsDraft();
+  document.getElementById('new-skill-modal').classList.add('open');
+}
+
+function generateAutoSkillId(name) {
+  const ascii = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  if (ascii.length >= 2) return ascii;
+  return (CURRENT_JOB_KEY || 'skill') + '_' + Date.now().toString(36).slice(-5);
+}
+
 function saveNewSkill() {
   const name = document.getElementById('ns-name').value.trim();
-  const rawId = document.getElementById('ns-id').value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+  const typedId = document.getElementById('ns-id').value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+  const rawId = EDITING_SKILL_ID || typedId || generateAutoSkillId(name);
   const desc = document.getElementById('ns-desc').value.trim().replace(/\n/g, '<br>');
   const types = Array.from(document.querySelectorAll('#ns-types .chip.active')).map(c => c.dataset.type);
   if (!name) { alert('กรุณากรอกชื่อสกิล'); return; }
-  if (!rawId) { alert('กรุณากรอกรหัสสกิลภาษาอังกฤษ (skillId) เช่น guardian'); return; }
 
-  NEW_SKILLS[rawId] = { name, type: types.length ? types : ['สกิลกดใช้'], desc };
+  const cleanSubs = SUB_SKILLS_DRAFT
+    .filter(ss => (ss.name || '').trim())
+    .map(ss => {
+      const o = { name: ss.name.trim() };
+      if ((ss.type || '').trim()) o.type = ss.type.trim();
+      if ((ss.req || '').trim()) o.req = ss.req.trim();
+      if ((ss.desc || '').trim()) o.desc = ss.desc.trim();
+      return o;
+    });
+
+  const skillObj = { name, type: types.length ? types : ['สกิลกดใช้'], desc };
+  if (cleanSubs.length) skillObj.summonSkills = cleanSubs;
+
+  NEW_SKILLS[rawId] = skillObj;
   if (!EDITOR_SKILLS.some(s => s.skillId === rawId)) {
     EDITOR_SKILLS.push({ skillId: rawId, obtain: [{ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' }] });
   }
   closeModal('new-skill-modal');
   renderEditorSkills();
-  showToast('สร้างสกิลใหม่ "' + name + '" เรียบร้อย!');
+  showToast((EDITING_SKILL_ID ? 'อัปเดตสกิล "' : 'สร้างสกิลใหม่ "') + name + '" เรียบร้อย!');
 }
 
 /* Build clean submission payload */
@@ -746,9 +974,12 @@ function buildIssueMarkdown() {
   }).join('\n') || '- *(ไม่มีสกิลเพิ่มเติม — ใช้สกิลสืบทอด)*';
 
   const newSkillCount = Object.keys(payload.newSkills).length;
-  const newSkillDetails = Object.entries(payload.newSkills).map(([id, m]) =>
-    `- ✨ **${m.name}** (\`${id}\`) | ประเภท: \`${(m.type || []).join(', ')}\`${m.desc ? ' — ' + m.desc.replace(/<br\s*\/?>/gi, ' ') : ''}`
-  ).join('\n');
+  const newSkillDetails = Object.entries(payload.newSkills).map(([id, m]) => {
+    const subLines = (m.summonSkills || []).map(ss =>
+      `  - ✦ **${ss.name}**${ss.type ? ` [${ss.type}]` : ''}${ss.req ? ` (${ss.req})` : ''}${ss.desc ? ': ' + ss.desc : ''}`
+    ).join('\n');
+    return `- ✨ **${m.name}** (\`${id}\`) | ประเภท: \`${(m.type || []).join(', ')}\`${m.desc ? ' — ' + m.desc.replace(/<br\s*\/?>/gi, ' ') : ''}${subLines ? '\n' + subLines : ''}`;
+  }).join('\n');
   return [
     `## 📝 คำขออัปเดตข้อมูลอาชีพ: ${payload.job.name}`,
     `- **ผู้ส่งข้อมูล:** ${contributor}`,

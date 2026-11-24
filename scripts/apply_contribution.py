@@ -63,13 +63,36 @@ def main():
                 continue
             if not isinstance(sdata, dict) or not sdata.get("name"):
                 continue
-            skills_master[sid] = {
+            existing = skills_master.get(sid) or {}
+            entry = {
                 "name": str(sdata["name"]).strip(),
                 "type": list(sdata.get("type") or ["สกิลกดใช้"]),
                 "desc": str(sdata.get("desc") or "").strip(),
             }
-            if sdata.get("image"):
-                skills_master[sid]["image"] = str(sdata["image"]).strip()
+            img = sdata.get("image") or existing.get("image")
+            if img:
+                entry["image"] = str(img).strip()
+            sub_skills = sdata.get("summonSkills")
+            if isinstance(sub_skills, list) and sub_skills:
+                clean_subs = []
+                for ss in sub_skills:
+                    if not isinstance(ss, dict) or not str(ss.get("name", "")).strip():
+                        continue
+                    sub_obj = {"name": str(ss["name"]).strip()}
+                    if str(ss.get("type", "")).strip():
+                        sub_obj["type"] = str(ss["type"]).strip()
+                    if str(ss.get("req", "")).strip():
+                        sub_obj["req"] = str(ss["req"]).strip()
+                    if str(ss.get("desc", "")).strip():
+                        sub_obj["desc"] = str(ss["desc"]).strip()
+                    if str(ss.get("image", "")).strip():
+                        sub_obj["image"] = str(ss["image"]).strip()
+                    clean_subs.append(sub_obj)
+                if clean_subs:
+                    entry["summonSkills"] = clean_subs
+            elif existing.get("summonSkills") and "summonSkills" not in sdata:
+                entry["summonSkills"] = existing["summonSkills"]
+            skills_master[sid] = entry
             added.append(sid)
         if added:
             SKILLS_FILE.write_text(

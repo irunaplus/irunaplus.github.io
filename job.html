@@ -624,7 +624,7 @@ function buildLevels(obtain, skillId) {
   return rows ? `<div class="skill-levels">${rows}</div>` : '';
 }
 
-function buildSummonBlock(summonSkills) {
+function buildSummonBlock(summonSkills, isSummon) {
   if (!summonSkills || summonSkills.length === 0) return '';
   const rows = summonSkills.map(ss => `
     <div class="summon-skill-row">
@@ -641,7 +641,7 @@ function buildSummonBlock(summonSkills) {
       </div>
     </div>`).join('');
   return `<div class="summon-block">
-    <div class="summon-block-title">✦ สกิลของตัวอัญเชิญ</div>
+    <div class="summon-block-title">${isSummon ? '✦ สกิลของตัวอัญเชิญ' : '✦ สกิลย่อย'}</div>
     <div class="summon-skills">${rows}</div>
   </div>`;
 }
@@ -671,7 +671,7 @@ function buildSkillCard(s) {
     </div>
     ${s.desc ? `<div class="skill-desc">${s.desc}</div>` : ''}
     ${buildLevels(s.obtain, s.skillId)}
-    ${isSummon && s.summonSkills ? buildSummonBlock(s.summonSkills) : ''}
+    ${s.summonSkills && s.summonSkills.length ? buildSummonBlock(s.summonSkills, isSummon) : ''}
   </div>`;
 }
 
