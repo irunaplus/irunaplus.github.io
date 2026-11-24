@@ -350,6 +350,7 @@
     },
     {
       "skillId": "farfae",
+      "maxSkillLevel": 2,
       "lv": [
         120,
         180
@@ -369,6 +370,7 @@
     },
     {
       "skillId": "knight_colon",
+      "maxSkillLevel": 2,
       "lv": [
         120,
         180
