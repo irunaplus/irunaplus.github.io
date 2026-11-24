@@ -199,6 +199,16 @@ a.skill-lv-row.clickable:hover .lv-loc {
 }
   .lv-badge { font-size: 11px; font-weight: 700; color: var(--deep); background: var(--gold); border-radius: 4px; padding: 2px 7px; flex-shrink: 0; }
   .lv-loc { color: var(--text-dim); flex: 1; }
+  a.career-job-link {
+    display: inline-flex; align-items: center; gap: 5px; margin: 0 2px; padding: 2px 7px;
+    border: 1px solid rgba(240, 180, 90, 0.5); border-radius: 6px;
+    background: rgba(240, 180, 90, 0.12); color: #f3c77d;
+    text-decoration: none; transition: background .15s, border-color .15s;
+  }
+  a.career-job-link:hover {
+    background: rgba(240, 180, 90, 0.22); border-color: rgba(240, 180, 90, 0.8);
+    color: #ffe0a6;
+  }
 
   /* ── Summon sub-skills ── */
   .summon-block { margin-top: 12px; border-top: 1px solid rgba(180,130,255,0.2); padding-top: 10px; }
@@ -642,7 +652,7 @@ function buildLevels(obtain, skillId, maxSkillLevel) {
     const skillLv = i + 1;   /* สกิล Lv (1-based) */
     const jobKey = rowObtain === 'เปลี่ยนอาชีพ' ? getObtainJobPageKey(entry) : '';
     const jobLink = rowObtain === 'เปลี่ยนอาชีพ' && jobKey
-      ? ` &nbsp;·&nbsp; <a href="job.html?job=${encodeURIComponent(jobKey)}" target="_blank" rel="noopener">อาชีพ: ${jobFilesMap[jobKey].label}</a>`
+      ? ` &nbsp;·&nbsp; <a class="career-job-link" href="job.html?job=${encodeURIComponent(jobKey)}" target="_blank" rel="noopener">🔗 ${jobFilesMap[jobKey].label}</a>`
       : '';
     const clickableTypes = ['เควส', 'ไอเทมดรอป', 'ไอเทมซื้อร้านค้า'];
     const isClickable = clickableTypes.includes(rowObtain);
