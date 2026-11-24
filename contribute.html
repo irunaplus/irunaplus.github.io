@@ -206,7 +206,7 @@
         <strong style="color:var(--accent);font-size:14.5px">🔗 สกิลที่สืบทอดมาอัตโนมัติ (ไม่ต้องพิมพ์ซ้ำ!)</strong>
         <div style="font-size:12.5px;color:var(--text-dim)" id="inh-summary">เลือกอาชีพก่อนหน้าด้านบนเพื่อสืบทอดสกิลอัตโนมัติ</div>
       </div>
-      <button type="button" class="db-btn secondary" onclick="autoCleanDuplicates()" title="ตัดสกิลและเลเวลที่ซ้ำกับอาชีพแม่ออกให้เหลือเฉพาะของใหม่">🧹 ลบสกิล/เลเวลซ้ำกับอาชีพแม่</button>
+      <button type="button" class="db-btn secondary" onclick="autoCleanDuplicates()" title="ตัดสกิลและเลเวลที่ซ้ำกับอาชีพก่อนหน้าออกให้เหลือเฉพาะของใหม่">🧹 ลบสกิล/เลเวลซ้ำกับอาชีพก่อนหน้า</button>
     </div>
     <div class="inh-list" id="inh-list"></div>
   </div>
@@ -1012,7 +1012,7 @@ function autoCleanDuplicates() {
   }
   EDITOR_SKILLS = cleaned;
   renderEditorSkills();
-  showToast(removed > 0 ? `ตัดรายการซ้ำกับอาชีพแม่ออก ${removed} แถวเรียบร้อย!` : 'ไม่มีรายการซ้ำกับอาชีพแม่แล้ว');
+  showToast(removed > 0 ? `ตัดรายการซ้ำกับอาชีพก่อนหน้าออก ${removed} แถวเรียบร้อย!` : 'ไม่มีรายการซ้ำกับอาชีพก่อนหน้าแล้ว');
 }
 
 function renderEditorSkills() {
