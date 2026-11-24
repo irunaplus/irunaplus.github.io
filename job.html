@@ -596,6 +596,21 @@ function renderLoc(locString) {
 
 /* ── level rows ── */
 // obtain is now array of {method, lv, loc}
+let CURRENT_JOB_PAGE_KEY = '';
+
+function getObtainJobPageKey(entry) {
+  const explicitKey = entry && typeof entry === 'object' && entry.jobId
+    ? Object.keys(jobFilesMap).find(key => key.toLowerCase() === String(entry.jobId).toLowerCase())
+    : '';
+  if (explicitKey) return explicitKey;
+  const loc = String(entry && typeof entry === 'object' ? entry.loc || '' : '').toLocaleLowerCase();
+  const matches = Object.entries(jobFilesMap)
+    .filter(([, job]) => loc.includes(job.label.toLocaleLowerCase()))
+    .sort((a, b) => b[1].label.length - a[1].label.length);
+  if (matches.length) return matches[0][0];
+  return CURRENT_JOB_PAGE_KEY;
+}
+
 function buildLevels(obtain, skillId, maxSkillLevel) {
   if (!Array.isArray(obtain) || !obtain.length) return '';
   const activeObtain = filterState.obtain;
@@ -625,10 +640,7 @@ function buildLevels(obtain, skillId, maxSkillLevel) {
     }
     const locInfo = renderLoc(locRaw);
     const skillLv = i + 1;   /* สกิล Lv (1-based) */
-    const rawJobId = typeof entry === 'object' && entry ? entry.jobId : '';
-    const jobKey = rawJobId
-      ? Object.keys(jobFilesMap).find(key => key.toLowerCase() === String(rawJobId).toLowerCase())
-      : '';
+    const jobKey = rowObtain === 'เปลี่ยนอาชีพ' ? getObtainJobPageKey(entry) : '';
     const jobLink = rowObtain === 'เปลี่ยนอาชีพ' && jobKey
       ? ` &nbsp;·&nbsp; <a href="job.html?job=${encodeURIComponent(jobKey)}" target="_blank" rel="noopener">อาชีพ: ${jobFilesMap[jobKey].label}</a>`
       : '';
@@ -918,6 +930,7 @@ async function renderJob(jobId) {
     return;
   }
 
+  CURRENT_JOB_PAGE_KEY = matchedKey;
   document.getElementById('page-title').textContent = job.name || entry.label;
 
   /* prereq meta pills */

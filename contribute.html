@@ -1188,16 +1188,22 @@ function renderEditorSkills() {
         const folder = methodToFolder(o.method);
         const odKey = folder ? `${folder}/${skillId}_${skillLvNum}.json` : '';
         const hasOd = odKey && Boolean(OBTAIN_DETAILS[odKey]);
+        const rowMethods = OBTAIN_METHODS.includes(o.method) ? OBTAIN_METHODS : [o.method, ...OBTAIN_METHODS];
+        const obtainJobKey = o.method === 'เปลี่ยนอาชีพ' ? getObtainJobKey(o) : '';
+        const obtainJob = JOBS.find(job => job.key === obtainJobKey);
+        const careerLink = obtainJob
+          ? `<a class="db-btn secondary obt-detail-btn" href="job.html?job=${encodeURIComponent(obtainJob.key)}" target="_blank" rel="noopener" style="padding:6px 9px;font-size:12px;white-space:nowrap">🔗 ${DB.esc(obtainJob.label)}</a>`
+          : '';
         return `
         <div>
         <div class="obtain-row">
           <span class="obt-lv-pill">Lv.${skillLvNum}</span>
           <select class="db-select" style="padding:7px 8px;font-size:13px" onchange="setEditorSkillRow('${DB.esc(skillId)}',${oi},'method',this.value)">
-            ${OBTAIN_METHODS.map(mt => `<option value="${mt}" ${o.method === mt ? 'selected' : ''}>${mt}</option>`).join('')}
+            ${rowMethods.map(mt => `<option value="${DB.esc(mt)}" ${o.method === mt ? 'selected' : ''}>${DB.esc(mt)}</option>`).join('')}
           </select>
           <input class="db-input" style="min-width:0;padding:7px 8px;font-size:13px" type="number" placeholder="Lv.ตัวละคร" value="${DB.esc(o.lv)}" oninput="setEditorSkillRow('${DB.esc(skillId)}',${oi},'lv',this.value ? Number(this.value) : '')">
           <input class="db-input obt-loc" style="min-width:0;padding:7px 10px;font-size:13px" type="text" placeholder="สถานที่ / NPC / ชื่อเควสต์ / ไอเทมดรอป" value="${DB.esc(o.loc)}" oninput="setEditorSkillRow('${DB.esc(skillId)}',${oi},'loc',this.value)">
-          ${folder ? `<button type="button" class="db-btn ${hasOd ? '' : 'secondary'} obt-detail-btn" style="padding:6px 9px;font-size:12px;white-space:nowrap" onclick="openObtainDetailModal('${DB.esc(skillId).replace(/'/g,"\\'")}', ${skillLvNum}, '${DB.esc(o.method)}', false)">${hasOd ? '✅ แก้วิธีทำสกิล' : '📋 กรอกวิธีทำสกิล'}</button>` : `<span class="obt-detail-placeholder"></span>`}
+          ${folder ? `<button type="button" class="db-btn ${hasOd ? '' : 'secondary'} obt-detail-btn" style="padding:6px 9px;font-size:12px;white-space:nowrap" onclick="openObtainDetailModal('${DB.esc(skillId).replace(/'/g,"\\'")}', ${skillLvNum}, '${DB.esc(o.method)}', false)">${hasOd ? '✅ แก้วิธีทำสกิล' : '📋 กรอกวิธีทำสกิล'}</button>` : (o.method === 'เปลี่ยนอาชีพ' ? careerLink : `<span class="obt-detail-placeholder"></span>`)}
           <div class="obt-row-actions">
             <button type="button" class="obt-add-btn" onclick="addObtainRow('${DB.esc(skillId)}',${oi})" title="เพิ่มเลเวลถัดจากบรรทัดนี้">＋</button>
             <button type="button" class="icon-btn" onclick="removeObtainRow('${DB.esc(skillId)}',${oi})" title="ลบแถวนี้">✕</button>
@@ -1205,8 +1211,7 @@ function renderEditorSkills() {
         </div>
         ${o.method === 'เปลี่ยนอาชีพ' ? `<label class="obtain-job-link">ลิงก์หน้าอาชีพ
           <select class="db-select" aria-label="เลือกอาชีพที่เกี่ยวข้องกับการได้สกิลเลเวล ${skillLvNum}" onchange="setEditorSkillRow('${DB.esc(skillId)}',${oi},'jobId',this.value)">
-            <option value="">ไม่ระบุลิงก์อาชีพ</option>
-            ${JOBS.map(job => `<option value="${DB.esc(job.key)}" ${o.jobId === job.key ? 'selected' : ''}>${DB.esc(job.label)}</option>`).join('')}
+            ${JOBS.map(job => `<option value="${DB.esc(job.key)}" ${obtainJobKey === job.key ? 'selected' : ''}>${DB.esc(job.label)}</option>`).join('')}
           </select>
         </label>` : ''}
         </div>`;
@@ -1619,6 +1624,18 @@ function methodToFolder(method) {
   if (method === 'ไอเทมดรอป') return 'drop';
   if (method === 'ไอเทมซื้อร้านค้า') return 'shop';
   return '';
+}
+
+function getObtainJobKey(row, fallbackKey = CURRENT_JOB_KEY) {
+  const explicitKey = row && typeof row === 'object' && row.jobId
+    ? JOBS.find(job => job.key.toLowerCase() === String(row.jobId).toLowerCase())?.key
+    : '';
+  if (explicitKey) return explicitKey;
+  const loc = String(row && typeof row === 'object' ? row.loc || '' : '').toLocaleLowerCase();
+  const matches = JOBS.filter(job => loc.includes(job.label.toLocaleLowerCase()))
+    .sort((a, b) => b.label.length - a.label.length);
+  if (matches.length) return matches[0].key;
+  return JOBS.find(job => job.key.toLowerCase() === String(fallbackKey || '').toLowerCase())?.key || '';
 }
 
 function renderQuestCondsDraft() {
