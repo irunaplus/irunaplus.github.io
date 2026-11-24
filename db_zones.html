@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="https://iruna-online.com/img/fankit/Colon_orange.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แผนที่ &amp; มอนสเตอร์ (Zones) | Iruna Online TH</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="db_common.css">
+<style>
+  .zones-layout {
+    display: grid; grid-template-columns: 340px 1fr; gap: 18px; align-items: start;
+  }
+  @media (max-width: 860px) { .zones-layout { grid-template-columns: 1fr; } }
+
+  .tree-panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; max-height: 76vh; overflow-y: auto;
+  }
+  .zone-tree, .zone-tree ul { list-style: none; padding-left: 14px; }
+  .zone-tree { padding-left: 0; }
+  .zone-tree li { margin: 4px 0; }
+  .zt-row {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: 5px 8px; border-radius: 6px; transition: background .15s;
+  }
+  .zt-row:hover { background: rgba(63,200,249,0.08); }
+  .zt-row.active { background: rgba(212,168,67,0.16); border: 1px solid var(--border-gold); }
+  .zt-btn {
+    background: none; border: none; color: var(--text); font-family: inherit;
+    font-size: 13.5px; cursor: pointer; text-align: left; padding: 0;
+  }
+  .zt-btn.town { color: #77d77b; font-weight: 700; }
+  .zt-btn.field { color: #e8e0f0; }
+  .zt-btn.dungeon { color: #f87171; }
+  .zt-bs {
+    font-size: 11px; padding: 1px 6px; border-radius: 4px;
+    background: rgba(212,168,67,0.15); border: 1px solid rgba(212,168,67,0.4);
+    color: var(--gold-light); cursor: pointer; font-family: inherit;
+  }
+  .zt-bs:hover { background: rgba(212,168,67,0.3); }
+
+  .mob-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; display: flex; gap: 14px; align-items: flex-start;
+  }
+  .mob-img {
+    width: 68px; height: 68px; object-fit: contain; border-radius: 8px;
+    background: rgba(10,12,24,0.7); border: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0; padding: 4px;
+  }
+  .mob-body { flex: 1; min-width: 0; }
+  .mob-drops { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .drop-chip {
+    display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 12.5px;
+    background: rgba(63,200,249,0.1); border: 1px solid rgba(63,200,249,0.28);
+    color: var(--accent); text-decoration: none; cursor: pointer;
+  }
+  .drop-chip:hover { background: rgba(63,200,249,0.22); }
+</style>
+</head>
+<body>
+<div id="stars"></div>
+<div id="sb-root"></div>
+
+<div class="hero">
+  <h1 class="hero-title" id="hero-title">🗺️ แผนที่ &amp; มอนสเตอร์ (Zones)</h1>
+  <p class="hero-desc">แผนผังแผนที่ทุก Episode มอนสเตอร์ ดรอปไอเทม เควสต์ประจำเมือง และช่างตีเหล็ก (Blacksmith)</p>
+</div>
+
+<div class="main-wrapper">
+  <div class="tab-strip" id="ep-tabs"></div>
+
+  <div class="zones-layout">
+    <div class="tree-panel">
+      <input class="db-input" id="zone-filter" type="text" placeholder="กรองชื่อแผนที่ หรือมอนสเตอร์..." style="width:100%;margin-bottom:10px;padding:7px 10px;font-size:13px">
+      <div style="font-size:11.5px;color:var(--text-dim);margin-bottom:8px;display:flex;gap:10px;flex-wrap:wrap">
+        <span style="color:#77d77b">● เมือง (Town)</span>
+        <span style="color:#e8e0f0">● แผนที่ (Field)</span>
+        <span style="color:#f87171">● ดันเจี้ยน (Dungeon)</span>
+      </div>
+      <div id="tree-wrap"><div class="loader">กำลังโหลดแผนที่...</div></div>
+    </div>
+
+    <div id="detail-wrap">
+      <div class="empty-state">เลือกแผนที่จากรายการด้านซ้ายเพื่อดูมอนสเตอร์ ดรอปไอเทม เควสต์ และช่างตีเหล็ก</div>
+    </div>
+  </div>
+</div>
+
+<script src="db_common.js"></script>
+<script>
+DB.initSidebar();
+
+let ZONES_META = [];
+let EP_DATA = null;
+let BLACKSMITHS = null;
+let CURRENT_EP = DB.qs('ep') || 'EP1';
+let ACTIVE_ZONE = DB.qs('zone') || '';
+let ACTIVE_BS = DB.qs('blacksmith') || '';
+
+async function init() {
+  try {
+    const [meta, epMap] = await Promise.all([
+      DB.loadJSON('data/db/zones_meta.json'),
+      DB.loadJSON('data/db/zone_ep_map.json'),
+    ]);
+    ZONES_META = meta;
+
+    // If zone query is provided without matching ep, resolve its EP automatically
+    if (ACTIVE_ZONE && epMap[ACTIVE_ZONE]) {
+      CURRENT_EP = epMap[ACTIVE_ZONE];
+    }
+
+    renderEpTabs();
+    await loadEp(CURRENT_EP);
+
+    if (ACTIVE_BS) {
+      await showBlacksmith(ACTIVE_BS);
+    } else if (ACTIVE_ZONE && EP_DATA.zones[ACTIVE_ZONE]) {
+      showZone(ACTIVE_ZONE);
+    } else {
+      const firstKey = Object.keys(EP_DATA.zones)[0];
+      if (firstKey) showZone(firstKey);
+    }
+  } catch (e) {
+    document.getElementById('tree-wrap').innerHTML = `<div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${DB.esc(e.message)}</div>`;
+  }
+}
+
+function renderEpTabs() {
+  document.getElementById('ep-tabs').innerHTML = ZONES_META.map(m =>
+    `<a class="tab-pill ${m.key === CURRENT_EP ? 'active' : ''}" href="db_zones.html?ep=${encodeURIComponent(m.key)}">${DB.esc(m.label)} <span style="opacity:.7">(${m.zoneCount})</span></a>`
+  ).join('');
+}
+
+async function loadEp(ep) {
+  EP_DATA = await DB.loadJSON(`data/db/zones/${ep}.json`);
+  document.getElementById('hero-title').textContent = `🗺️ แผนที่: ${EP_DATA.label}`;
+  document.title = `Zones: ${EP_DATA.label} | Iruna Online TH`;
+  renderTree('');
+}
+
+document.getElementById('zone-filter').addEventListener('input', e => {
+  renderTree(e.target.value.trim().toLowerCase());
+});
+
+function nodeMatches(node, q) {
+  if (!q) return true;
+  if (node.name.toLowerCase().includes(q) || node.slug.toLowerCase().includes(q)) return true;
+  const z = EP_DATA.zones[node.slug];
+  if (z && (z.monsters || []).some(m => m.name.toLowerCase().includes(q) || (m.drops || []).some(d => d.name.toLowerCase().includes(q)))) return true;
+  if (node.children && node.children.some(c => nodeMatches(c, q))) return true;
+  return false;
+}
+
+function buildTreeHtml(nodes, q) {
+  let html = '<ul class="zone-tree">';
+  for (const n of nodes) {
+    if (!nodeMatches(n, q)) continue;
+    const z = EP_DATA.zones[n.slug];
+    const mc = z ? (z.monsters || []).length : 0;
+    const isAct = ACTIVE_ZONE === n.slug && !ACTIVE_BS;
+    html += `<li>
+      <div class="zt-row ${isAct ? 'active' : ''}" data-zslug="${DB.esc(n.slug)}">
+        <button type="button" class="zt-btn ${DB.esc(n.type || 'field')}" onclick="showZone('${DB.esc(n.slug).replace(/'/g,"\\'")}')">
+          ${DB.esc(n.name)} ${mc ? `<span style="font-size:11px;color:var(--text-dim)">(${mc})</span>` : ''}
+        </button>
+        ${n.blacksmith ? `<button type="button" class="zt-bs" onclick="showBlacksmith('${DB.esc(n.blacksmith).replace(/'/g,"\\'")}')">🔨 ช่างตีเหล็ก</button>` : ''}
+        ${n.crossEp ? `<span style="font-size:11px;color:var(--purple)">${DB.esc(n.crossEp)}</span>` : ''}
+      </div>
+      ${n.children && n.children.length ? buildTreeHtml(n.children, q) : ''}
+    </li>`;
+  }
+  html += '</ul>';
+  return html;
+}
+
+function renderTree(q) {
+  document.getElementById('tree-wrap').innerHTML = buildTreeHtml(EP_DATA.tree || [], q);
+}
+
+function highlightActiveRow(slug) {
+  document.querySelectorAll('.zt-row').forEach(r => r.classList.toggle('active', r.dataset.zslug === slug));
+}
+
+function showZone(slug) {
+  ACTIVE_ZONE = slug;
+  ACTIVE_BS = '';
+  highlightActiveRow(slug);
+  const z = EP_DATA.zones[slug];
+  const wrap = document.getElementById('detail-wrap');
+  if (!z) {
+    wrap.innerHTML = `<div class="empty-state">ไม่พบข้อมูลแผนที่ ${DB.esc(slug)}</div>`;
+    return;
+  }
+
+  let html = `<div class="db-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <div>
+        <h2 style="color:var(--gold-light);font-size:20px">${DB.esc(z.name)}</h2>
+        <div style="font-size:13px;color:var(--text-dim);margin-top:2px">
+          มอนสเตอร์ ${(z.monsters || []).length} ตัว · เควสต์ ${(z.quests || []).length} เควสต์
+        </div>
+      </div>
+      ${z.blacksmith ? `<button class="db-btn" onclick="showBlacksmith('${DB.esc(z.blacksmith).replace(/'/g,"\\'")}')">🔨 เปิดรายการช่างตีเหล็ก (Blacksmith)</button>` : ''}
+    </div>
+  </div>`;
+
+  // Monsters
+  if (z.monsters && z.monsters.length) {
+    html += `<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">`;
+    for (const m of z.monsters) {
+      const imgUrl = m.img ? `https://th.iruna-online.info/iruna/${m.img.replace(/^\/+/, '')}` : '';
+      html += `<div class="mob-card">
+        ${imgUrl ? `<img class="mob-img" src="${DB.esc(imgUrl)}" alt="${DB.esc(m.name)}" loading="lazy" onerror="this.style.display='none'">` : ''}
+        <div class="mob-body">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <strong style="font-size:15.5px;color:var(--gold-light)">${DB.esc(m.name)}</strong>
+            ${m.lv ? `<span class="badge red">Lv.${DB.esc(m.lv)}</span>` : ''}
+            ${m.area ? `<span class="badge purple">${DB.esc(m.area)}</span>` : ''}
+            ${m.attr ? `<span class="badge">ธาตุ: ${DB.esc(m.attr)}</span>` : ''}
+            ${m.weak ? `<span class="badge green">แพ้: ${DB.esc(m.weak)}</span>` : ''}
+            ${m.aggr ? `<span class="badge orange">${DB.esc(m.aggr)}</span>` : ''}
+          </div>
+          ${m.drops && m.drops.length ? `
+            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">ดรอปไอเทม:</div>
+            <div class="mob-drops">
+              ${m.drops.map(d => `<a class="drop-chip" href="javascript:void(0)" onclick="DB.openItemModal('${DB.esc(d.slug).replace(/'/g,"\\'")}', '${DB.esc(d.name).replace(/'/g,"\\'")}')">${DB.esc(d.name)}</a>`).join('')}
+            </div>` : `<div style="font-size:12px;color:var(--text-dim)">ไม่มีข้อมูลดรอป</div>`}
+        </div>
+      </div>`;
+    }
+    html += `</div>`;
+  } else {
+    html += `<div class="db-panel" style="color:var(--text-dim);font-size:13.5px">ไม่มีมอนสเตอร์ในแผนที่นี้ (เขตเมือง / พื้นที่ปลอดภัย)</div>`;
+  }
+
+  // Quests in this zone
+  if (z.quests && z.quests.length) {
+    html += `<div class="db-panel"><h3 style="color:var(--gold-light);margin-bottom:12px;font-size:16px">📜 เควสต์ในแผนที่นี้ (${z.quests.length})</h3>
+      <div style="display:flex;flex-direction:column;gap:10px;">`;
+    for (const q of z.quests) {
+      html += `<div class="db-card">
+        <div class="db-card-title">
+          <span>${q.mq ? `<span class="badge gold" style="margin-right:6px">${DB.esc(q.mq)}</span>` : ''}${DB.esc(q.title)}</span>
+          ${q.exp ? `<span class="badge green">EXP ${DB.esc(q.exp)}</span>` : ''}
+        </div>
+        ${q.desc ? `<div style="font-size:13px;color:var(--text-dim);margin-bottom:5px">${DB.esc(q.desc)}</div>` : ''}
+        ${q.npc ? `<div style="font-size:12.5px"><strong>NPC:</strong> ${DB.esc(q.npc)}</div>` : ''}
+        ${q.reward ? `<div style="font-size:12.5px"><strong>รางวัล:</strong> ${DB.esc(q.reward)}</div>` : ''}
+        ${q.skillReward ? `<div style="font-size:12.5px"><strong>รางวัลสกิล:</strong> <span class="badge purple">${DB.esc(q.skillReward)}</span></div>` : ''}
+        ${q.objectives && q.objectives.length ? `<div style="font-size:12.5px;margin-top:4px"><strong>เป้าหมาย:</strong> ${q.objectives.map(o => o.kind === 'item'
+          ? `<a class="item-link" href="javascript:void(0)" onclick="DB.openItemModal('${DB.esc(o.slug).replace(/'/g,"\\'")}', '${DB.esc(o.text).replace(/'/g,"\\'")}')">${DB.esc(o.text)}</a>`
+          : `<span>${DB.esc(o.text)}</span>`).join(', ')}</div>` : ''}
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  wrap.innerHTML = html;
+}
+
+async function showBlacksmith(bsSlug) {
+  ACTIVE_BS = bsSlug;
+  highlightActiveRow('');
+  const wrap = document.getElementById('detail-wrap');
+  wrap.innerHTML = '<div class="loader">กำลังโหลดข้อมูลช่างตีเหล็ก...</div>';
+  if (!BLACKSMITHS) {
+    BLACKSMITHS = await DB.loadJSON('data/db/blacksmiths.json');
+  }
+  const bs = BLACKSMITHS[bsSlug];
+  if (!bs) {
+    wrap.innerHTML = `<div class="empty-state">ไม่พบข้อมูลช่างตีเหล็ก ${DB.esc(bsSlug)}</div>`;
+    return;
+  }
+  let html = `<div class="db-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <div>
+        <h2 style="color:var(--gold-light);font-size:20px">🔨 ช่างตีเหล็ก: ${DB.esc(bs.name)}</h2>
+        <div style="font-size:13px;color:var(--text-dim)">รายการสร้างและอัปเกรดอุปกรณ์ที่ ${DB.esc(bs.name)}</div>
+      </div>
+      ${EP_DATA && EP_DATA.zones[bsSlug] ? `<button class="db-btn secondary" onclick="showZone('${DB.esc(bsSlug).replace(/'/g,"\\'")}')">← กลับไปข้อมูลเมือง</button>` : ''}
+    </div>
+  </div>`;
+
+  for (const cat of (bs.categories || [])) {
+    html += `<div class="db-panel">
+      <h3 style="color:var(--gold-light);margin-bottom:10px;font-size:15.5px">${DB.esc(cat.cat)} (${cat.items.length})</h3>
+      <div class="db-grid">
+        ${cat.items.map(it => `
+          <div class="db-card">
+            <div class="db-card-title">
+              <a href="javascript:void(0)" onclick="DB.openItemModal('${DB.esc(it.slug).replace(/'/g,"\\'")}', '${DB.esc(it.name).replace(/'/g,"\\'")}')">${DB.esc(it.name)}</a>
+            </div>
+            <div class="stat-en">${DB.esc(it.stats)}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  }
+  wrap.innerHTML = html;
+}
+
+init();
+</script>
+</body>
+</html>

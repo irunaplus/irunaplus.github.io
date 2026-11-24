@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="https://iruna-online.com/img/fankit/Colon_orange.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>การผลิต (Production) | Iruna Online TH</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="db_common.css">
+</head>
+<body>
+<div id="stars"></div>
+<div id="sb-root"></div>
+
+<div class="hero">
+  <h1 class="hero-title" id="hero-title">⚒️ การผลิต (Production)</h1>
+  <p class="hero-desc">สูตรการผลิตครบทุกสายอาชีพ Lv.1–300 พร้อมวัตถุดิบและลิงก์ไปเครื่องคำนวณวัตถุดิบ</p>
+</div>
+
+<div class="main-wrapper">
+  <div class="tab-strip" id="prof-tabs"></div>
+
+  <div class="db-panel">
+    <div class="db-controls">
+      <input class="db-input" id="search-input" type="text" placeholder="ค้นหาชื่อไอเทมที่ผลิต หรือชื่อวัตถุดิบ...">
+      <a class="db-btn" href="db_calculator.html">🧮 เปิดเครื่องคำนวณวัตถุดิบ</a>
+    </div>
+    <div class="chip-wrap" id="lv-chips" style="margin-top:12px">
+      <button class="chip active" onclick="setRange(0,999,this)">ทั้งหมด (1–300)</button>
+      <button class="chip" onclick="setRange(1,50,this)">Lv 1–50</button>
+      <button class="chip" onclick="setRange(51,100,this)">Lv 51–100</button>
+      <button class="chip" onclick="setRange(101,150,this)">Lv 101–150</button>
+      <button class="chip" onclick="setRange(151,200,this)">Lv 151–200</button>
+      <button class="chip" onclick="setRange(201,250,this)">Lv 201–250</button>
+      <button class="chip" onclick="setRange(251,350,this)">Lv 251–300</button>
+    </div>
+  </div>
+
+  <div class="count-bar">
+    <span id="count-info">กำลังโหลด...</span>
+    <span style="font-size:12px">💡 คลิกที่วัตถุดิบเพื่อดูมอนสเตอร์ที่ดรอปทันที</span>
+  </div>
+
+  <div id="recipes-grid" class="db-grid"><div class="loader">กำลังโหลดสูตรการผลิต...</div></div>
+  <div class="pager" id="pager"></div>
+</div>
+
+<script src="db_common.js"></script>
+<script>
+DB.initSidebar();
+
+let META = [];
+let CURRENT_PROF = DB.qs('prof') || 'Smithing';
+let RECIPES = [];
+let MIN_LV = 0, MAX_LV = 999;
+let PAGE = 1;
+const PER_PAGE = 60;
+
+async function init() {
+  try {
+    META = await DB.loadJSON('data/db/production_meta.json');
+    const cur = META.find(m => m.key === CURRENT_PROF) || META[0];
+    CURRENT_PROF = cur.key;
+
+    document.getElementById('prof-tabs').innerHTML = META.map(m =>
+      `<a class="tab-pill ${m.key === CURRENT_PROF ? 'active' : ''}" href="db_production.html?prof=${encodeURIComponent(m.key)}">${DB.esc(m.label)} <span style="opacity:.7">(${m.count})</span></a>`
+    ).join('');
+
+    document.getElementById('hero-title').textContent = `⚒️ การผลิต: ${cur.label}`;
+    document.title = `${cur.label} | Iruna Online TH`;
+
+    RECIPES = await DB.loadJSON(`data/db/production/${CURRENT_PROF}.json`);
+    render();
+  } catch (e) {
+    document.getElementById('recipes-grid').innerHTML = `<div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${DB.esc(e.message)}</div>`;
+  }
+}
+
+function setRange(min, max, btn) {
+  MIN_LV = min; MAX_LV = max; PAGE = 1;
+  document.querySelectorAll('#lv-chips .chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+document.getElementById('search-input').addEventListener('input', () => { PAGE = 1; render(); });
+
+function render() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  const filtered = RECIPES.filter(r => {
+    if (r.lv < MIN_LV || r.lv > MAX_LV) return false;
+    if (q) {
+      const hay = (r.name + ' ' + r.type + ' ' + (r.mats || []).map(m => m.name).join(' ')).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  if (PAGE > totalPages) PAGE = totalPages;
+  const slice = filtered.slice((PAGE - 1) * PER_PAGE, PAGE * PER_PAGE);
+
+  document.getElementById('count-info').textContent = `พบ ${filtered.length.toLocaleString()} สูตร (หน้า ${PAGE}/${totalPages})`;
+
+  const grid = document.getElementById('recipes-grid');
+  if (!slice.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">ไม่พบสูตรการผลิตที่ตรงกับเงื่อนไข</div>`;
+    document.getElementById('pager').innerHTML = '';
+    return;
+  }
+
+  grid.innerHTML = slice.map(r => `
+    <div class="db-card">
+      <div class="db-card-title">
+        <a href="javascript:void(0)" onclick="DB.openItemModal('${DB.esc(r.slug).replace(/'/g,"\\'")}', '${DB.esc(r.name).replace(/'/g,"\\'")}')">${DB.esc(r.name)} x${r.qty}</a>
+        <span class="badge purple">Lv.${r.lv}</span>
+      </div>
+      <div style="margin-bottom:6px;display:flex;gap:6px;flex-wrap:wrap">
+        ${r.type ? `<span class="badge gold">${DB.esc(r.type)}</span>` : ''}
+        <a class="badge" href="db_calculator.html?item=${encodeURIComponent(r.slug)}">🧮 คำนวณวัตถุดิบ</a>
+      </div>
+      <div style="font-size:13px;display:flex;flex-direction:column;gap:3px;">
+        ${(r.mats || []).map((m, idx) => `
+          <div>
+            <span style="color:var(--text-dim)">${idx + 1}:</span>
+            <a class="item-link" href="javascript:void(0)" onclick="DB.openItemModal('${DB.esc(m.slug).replace(/'/g,"\\'")}', '${DB.esc(m.name).replace(/'/g,"\\'")}')">${DB.esc(m.name)}</a>
+            <span style="color:var(--gold-light)"> x${m.qty}</span>
+          </div>
+        `).join('')}
+        ${r.successA ? `<div style="font-size:12px;color:var(--green)">Success A: ${DB.esc(r.successA.name)} x${r.successA.qty}</div>` : ''}
+        ${r.successB ? `<div style="font-size:12px;color:var(--accent)">Success B: ${DB.esc(r.successB.name)} x${r.successB.qty}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('pager').innerHTML = totalPages <= 1 ? '' : `
+    <button class="db-btn secondary" ${PAGE <= 1 ? 'disabled' : ''} onclick="goPage(${PAGE - 1})">← ก่อนหน้า</button>
+    <span style="color:var(--text-dim);font-size:13px">หน้า ${PAGE} / ${totalPages}</span>
+    <button class="db-btn secondary" ${PAGE >= totalPages ? 'disabled' : ''} onclick="goPage(${PAGE + 1})">ถัดไป →</button>
+  `;
+}
+
+function goPage(p) {
+  PAGE = p;
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+init();
+</script>
+</body>
+</html>

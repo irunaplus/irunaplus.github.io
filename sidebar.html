@@ -1,4 +1,70 @@
 <!-- sidebar.html — โหลดด้วย JS fetch ในทุกหน้า -->
+<style>
+  .sidebar { scrollbar-width: thin; scrollbar-color: rgba(212,168,67,0.35) transparent; }
+  .sidebar::-webkit-scrollbar { width: 5px; }
+  .sidebar::-webkit-scrollbar-thumb { background: rgba(212,168,67,0.3); border-radius: 3px; }
+
+  .sb-search-form {
+    display: flex; gap: 6px; margin-bottom: 8px;
+  }
+  .sb-search-input {
+    flex: 1; min-width: 0; padding: 8px 10px;
+    background: rgba(15,23,42,0.85); border: 1px solid rgba(212,168,67,0.3);
+    border-radius: 6px; color: #e8e0f0;
+    font-family: 'Noto Sans Thai', sans-serif; font-size: 12.5px;
+    outline: none; transition: border-color .2s;
+  }
+  .sb-search-input:focus { border-color: #3fc8f9; }
+  .sb-search-input::placeholder { color: #8a82a6; }
+  .sb-search-go {
+    padding: 0 10px; border-radius: 6px; cursor: pointer;
+    background: rgba(212,168,67,0.16); border: 1px solid rgba(212,168,67,0.4);
+    color: #f0c96a; font-size: 13px; transition: all .2s;
+  }
+  .sb-search-go:hover { background: rgba(212,168,67,0.3); }
+
+  .sb-acc {
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .sb-acc-btn {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; text-align: left; padding: 9px 12px;
+    background: rgba(30,41,59,0.55); border: 1px solid rgba(51,65,85,0.65);
+    border-radius: 6px; color: #d8d0e8;
+    font-family: 'Noto Sans Thai', sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+  }
+  .sb-acc-btn:hover { background: rgba(63,200,249,0.08); border-color: #3fc8f9; color: #3fc8f9; }
+  .sb-acc.open > .sb-acc-btn {
+    background: rgba(212,168,67,0.12); border-color: rgba(212,168,67,0.55); color: #f0c96a;
+  }
+  .sb-acc-arrow {
+    font-size: 10px; opacity: 0.8; transition: transform .2s;
+  }
+  .sb-acc.open > .sb-acc-btn .sb-acc-arrow { transform: rotate(90deg); }
+
+  .sb-acc-list {
+    display: none; flex-direction: column; gap: 3px;
+    padding: 3px 0 6px 10px; margin-left: 6px;
+    border-left: 1px solid rgba(212,168,67,0.22);
+  }
+  .sb-acc.open > .sb-acc-list { display: flex; }
+
+  .sb-sub {
+    display: block; width: 100%; text-align: left; padding: 6px 10px;
+    background: rgba(15,23,42,0.45); border: 1px solid transparent;
+    border-radius: 5px; color: #b2a6cc;
+    font-family: 'Noto Sans Thai', sans-serif; font-size: 12.5px;
+    text-decoration: none; transition: all .18s;
+  }
+  .sb-sub:hover { background: rgba(63,200,249,0.1); border-color: rgba(63,200,249,0.35); color: #3fc8f9; }
+  .sb-sub.active { background: rgba(212,168,67,0.15); border-color: rgba(212,168,67,0.55); color: #f0c96a; font-weight: 600; }
+
+  .sb-divider {
+    height: 1px; background: rgba(212,168,67,0.18); margin: 4px 0;
+  }
+</style>
+
 <!-- Hamburger Button -->
 <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="เมนู">
   <span></span><span></span><span></span>
@@ -9,26 +75,184 @@
 
 <!-- Sidebar -->
 <nav class="sidebar">
-  <div class="sidebar-title">เครื่องมือ</div>
+  <div class="sidebar-title">🐺 Iruna Library</div>
 
-  <a class="sb-btn" href="exp_calculator" data-page="exp_calculator">คำนวณ EXP</a>
-  <a class="sb-btn" href="spinner"         data-page="spinner">🎡 สุ่มอาชีพ</a>
+  <form class="sb-search-form" onsubmit="return sbQuickSearch(event)">
+    <input class="sb-search-input" id="sb-q" type="text" placeholder="ค้นหาไอเทม มอน แผนที่..." autocomplete="off">
+    <button class="sb-search-go" type="submit" title="ค้นหา">🔍</button>
+  </form>
+
+  <a class="sb-btn" href="index.html" data-page="index">🏠 หน้าหลัก</a>
+
+  <div class="sb-section-label">เครื่องมือ</div>
+  <a class="sb-btn" href="exp_calculator.html" data-page="exp_calculator">📊 คำนวณ EXP</a>
+  <a class="sb-btn" href="spinner.html" data-page="spinner">🎡 สุ่มอาชีพ</a>
+  <a class="sb-btn" href="db_calculator.html" data-page="db_calculator">🧮 คำนวณวัตถุดิบผลิต</a>
+  <a class="sb-btn" href="db_search.html" data-page="db_search">🔍 ค้นหาฐานข้อมูลทั้งหมด</a>
 
   <div class="sb-section-label">ข้อมูลอาชีพ</div>
-  <a class="sb-btn sb-job-btn" href="job_tree" data-page="job_tree">เส้นทางอาชีพ</a>
+  <a class="sb-btn sb-job-btn" href="job_tree.html" data-page="job_tree">🌳 เส้นทางอาชีพ</a>
+
+  <div class="sb-section-label">ฐานข้อมูล Iruna TH</div>
+
+  <!-- 1. Guides -->
+  <div class="sb-acc" data-group="guides">
+    <button type="button" class="sb-acc-btn" onclick="toggleSbAcc(this)">
+      <span>📚 คู่มือ (Guides)</span><span class="sb-acc-arrow">▶</span>
+    </button>
+    <div class="sb-acc-list">
+      <a class="sb-sub" href="db_guide.html?page=pets" data-match="db_guide:pets">🐾 สัตว์เลี้ยง (Pets Guide)</a>
+      <a class="sb-sub" href="db_guide.html?page=classes" data-match="db_guide:classes">⚔️ อาชีพ (Classes)</a>
+      <a class="sb-sub" href="db_guide.html?page=stats" data-match="db_guide:stats">📈 ค่าสถานะ (Stats)</a>
+      <a class="sb-sub" href="db_guide.html?page=skills" data-match="db_guide:skills">✨ สกิลทุกอาชีพ (Skills)</a>
+      <a class="sb-sub" href="db_guide.html?page=abilities" data-match="db_guide:abilities">⭐ อบิลิตี้ (☆Abilities)</a>
+      <a class="sb-sub" href="db_guide.html?page=abilities2" data-match="db_guide:abilities2">🎯 ดรอปอบิลิตี้ (Abilities Beta)</a>
+      <a class="sb-sub" href="db_guide.html?page=apostolia" data-match="db_guide:apostolia">🔮 อโพสโทเลีย (Apostolia)</a>
+      <a class="sb-sub" href="db_guide.html?page=refinement" data-match="db_guide:refinement">🔨 การตีบวก (Refinement)</a>
+      <a class="sb-sub" href="db_quests.html" data-match="db_quests">📜 เควสต์ (Quests)</a>
+      <a class="sb-sub" href="db_guide.html?page=raids" data-match="db_guide:raids">🐉 เรดบอส (Raids)</a>
+      <a class="sb-sub" href="db_guide.html?page=lottery" data-match="db_guide:lottery">🎰 ลอตเตอรี่ (Lottery)</a>
+      <a class="sb-sub" href="db_guide.html?page=background_music" data-match="db_guide:background_music">🎵 เพลงประกอบ (BGM)</a>
+    </div>
+  </div>
+
+  <!-- 2. Events -->
+  <div class="sb-acc" data-group="events">
+    <button type="button" class="sb-acc-btn" onclick="toggleSbAcc(this)">
+      <span>🎉 อีเวนต์ (Events)</span><span class="sb-acc-arrow">▶</span>
+    </button>
+    <div class="sb-acc-list">
+      <a class="sb-sub" href="db_events.html?event=anniversary" data-match="db_events:anniversary">Anniversary (ครบรอบ)</a>
+      <a class="sb-sub" href="db_events.html?event=academy" data-match="db_events:academy">Academy (โรงเรียน)</a>
+      <a class="sb-sub" href="db_events.html?event=setsubun" data-match="db_events:setsubun">Setsubun (เซ็ตสึบุน)</a>
+      <a class="sb-sub" href="db_events.html?event=valentines_day" data-match="db_events:valentines_day">Valentines Day</a>
+      <a class="sb-sub" href="db_events.html?event=white_day" data-match="db_events:white_day">White Day</a>
+      <a class="sb-sub" href="db_events.html?event=easter" data-match="db_events:easter">Easter</a>
+      <a class="sb-sub" href="db_events.html?event=summer" data-match="db_events:summer">Summer</a>
+      <a class="sb-sub" href="db_events.html?event=halloween" data-match="db_events:halloween">Halloween</a>
+      <a class="sb-sub" href="db_events.html?event=xmas" data-match="db_events:xmas">Christmas</a>
+    </div>
+  </div>
+
+  <!-- 3. Zones -->
+  <div class="sb-acc" data-group="zones">
+    <button type="button" class="sb-acc-btn" onclick="toggleSbAcc(this)">
+      <span>🗺️ แผนที่ &amp; มอน (Zones)</span><span class="sb-acc-arrow">▶</span>
+    </button>
+    <div class="sb-acc-list">
+      <a class="sb-sub" href="db_zones.html?ep=EP1" data-match="db_zones:EP1">Zones: Episode 1</a>
+      <a class="sb-sub" href="db_zones.html?ep=EP2" data-match="db_zones:EP2">Zones: Episode 2</a>
+      <a class="sb-sub" href="db_zones.html?ep=EP3" data-match="db_zones:EP3">Zones: Episode 3</a>
+      <a class="sb-sub" href="db_zones.html?ep=EP4" data-match="db_zones:EP4">Zones: Episode 4</a>
+      <a class="sb-sub" href="db_zones.html?ep=EP5" data-match="db_zones:EP5">Zones: Episode 5</a>
+      <a class="sb-sub" href="db_zones.html?ep=EP6" data-match="db_zones:EP6">Zones: Episode 6</a>
+      <a class="sb-sub" href="db_zones.html?ep=EP7" data-match="db_zones:EP7">Zones: Episode 7</a>
+      <a class="sb-sub" href="db_zones.html?ep=Raids" data-match="db_zones:Raids">Zones: Raids</a>
+      <a class="sb-sub" href="db_zones.html?ep=Events" data-match="db_zones:Events">Zones: Events</a>
+    </div>
+  </div>
+
+  <!-- 4. Equipment -->
+  <div class="sb-acc" data-group="equipment">
+    <button type="button" class="sb-acc-btn" onclick="toggleSbAcc(this)">
+      <span>🛡️ อุปกรณ์ (Equipment)</span><span class="sb-acc-arrow">▶</span>
+    </button>
+    <div class="sb-acc-list">
+      <a class="sb-sub" href="db_items.html?cat=Swords" data-match="db_items:Swords">⚔️ ดาบ (Swords)</a>
+      <a class="sb-sub" href="db_items.html?cat=Bows" data-match="db_items:Bows">🏹 ธนู (Bows)</a>
+      <a class="sb-sub" href="db_items.html?cat=Canes" data-match="db_items:Canes">🪄 ไม้เท้า (Canes)</a>
+      <a class="sb-sub" href="db_items.html?cat=Claws" data-match="db_items:Claws">🐾 กรงเล็บ (Claws)</a>
+      <a class="sb-sub" href="db_items.html?cat=Throwing" data-match="db_items:Throwing">🌀 อาวุธขว้าง (Throwing)</a>
+      <a class="sb-sub" href="db_items.html?cat=Armor" data-match="db_items:Armor">🦺 ชุดเกราะ (Armor)</a>
+      <a class="sb-sub" href="db_items.html?cat=Additional" data-match="db_items:Additional">👑 อุปกรณ์เสริม (Additional)</a>
+      <a class="sb-sub" href="db_items.html?cat=Special" data-match="db_items:Special">💍 อุปกรณ์พิเศษ (Special)</a>
+      <a class="sb-sub" href="db_items.html?cat=Crystas" data-match="db_items:Crystas">◇ คริสต้า (Crystas)</a>
+      <a class="sb-sub" href="db_items.html?cat=AlCrystas" data-match="db_items:AlCrystas">▲ อัลคริสต้า (Al Crystas)</a>
+      <a class="sb-sub" href="db_items.html?cat=RelicCrystas" data-match="db_items:RelicCrystas">□ เรลิกคริสต้า (Relic Crystas)</a>
+    </div>
+  </div>
+
+  <!-- 5. Items -->
+  <div class="sb-acc" data-group="items">
+    <button type="button" class="sb-acc-btn" onclick="toggleSbAcc(this)">
+      <span>🎒 ไอเทม (Items)</span><span class="sb-acc-arrow">▶</span>
+    </button>
+    <div class="sb-acc-list">
+      <a class="sb-sub" href="db_items.html?cat=Recovery" data-match="db_items:Recovery">ฟื้นฟู (Recovery)</a>
+      <a class="sb-sub" href="db_items.html?cat=Status" data-match="db_items:Status">แก้สถานะ (Status)</a>
+      <a class="sb-sub" href="db_items.html?cat=Strengthening" data-match="db_items:Strengthening">เพิ่มพลัง/บัฟ (Strengthening)</a>
+      <a class="sb-sub" href="db_items.html?cat=Teleport" data-match="db_items:Teleport">วาร์ป (Teleport)</a>
+      <a class="sb-sub" href="db_items.html?cat=Skills" data-match="db_items:Skills">หนังสือสกิล (Skills)</a>
+      <a class="sb-sub" href="db_items.html?cat=Chests" data-match="db_items:Chests">กล่องสมบัติ (Chests)</a>
+      <a class="sb-sub" href="db_items.html?cat=Collectibles" data-match="db_items:Collectibles">ของสะสม/วัตถุดิบ (Collectibles)</a>
+      <a class="sb-sub" href="db_items.html?cat=Ores" data-match="db_items:Ores">แร่ตีบวก (Ores)</a>
+      <a class="sb-sub" href="db_items.html?cat=IslandItems" data-match="db_items:IslandItems">ของแต่งเกาะ (Island Objects)</a>
+      <a class="sb-sub" href="db_items.html?cat=Points" data-match="db_items:Points">ไอเทมช็อป (Store Items)</a>
+      <a class="sb-sub" href="db_items.html?cat=Pets" data-match="db_items:Pets">สัตว์เลี้ยง (Pets)</a>
+      <a class="sb-sub" href="db_items.html?cat=Fish" data-match="db_items:Fish">ตกปลา (Fish)</a>
+      <a class="sb-sub" href="db_items.html?cat=Other" data-match="db_items:Other">อื่นๆ (Other)</a>
+    </div>
+  </div>
+
+  <!-- 6. Production -->
+  <div class="sb-acc" data-group="production">
+    <button type="button" class="sb-acc-btn" onclick="toggleSbAcc(this)">
+      <span>⚒️ การผลิต (Production)</span><span class="sb-acc-arrow">▶</span>
+    </button>
+    <div class="sb-acc-list">
+      <a class="sb-sub" href="db_production.html?prof=Smithing" data-match="db_production:Smithing">🔨 ตีเหล็ก (Smithing)</a>
+      <a class="sb-sub" href="db_production.html?prof=Carpentry" data-match="db_production:Carpentry">🪵 ช่างไม้ (Carpentry)</a>
+      <a class="sb-sub" href="db_production.html?prof=Tailoring" data-match="db_production:Tailoring">🧵 ตัดเย็บ (Tailoring)</a>
+      <a class="sb-sub" href="db_production.html?prof=Chasing" data-match="db_production:Chasing">💎 แกะสลัก (Chasing)</a>
+      <a class="sb-sub" href="db_production.html?prof=Alchemy" data-match="db_production:Alchemy">⚗️ เล่นแร่แปรธาตุ (Alchemy)</a>
+      <a class="sb-sub" href="db_production.html?prof=Cooking" data-match="db_production:Cooking">🍲 ทำอาหาร (Cooking)</a>
+      <div class="sb-divider"></div>
+      <a class="sb-sub" href="db_calculator.html" data-match="db_calculator">🧮 คำนวณวัตถุดิบ (Calculator)</a>
+    </div>
+  </div>
 </nav>
 
 <script>
 function toggleSidebar() {
   document.body.classList.toggle('sidebar-open');
 }
+function toggleSbAcc(btn) {
+  const acc = btn.closest('.sb-acc');
+  if (!acc) return;
+  acc.classList.toggle('open');
+}
+function sbQuickSearch(e) {
+  e.preventDefault();
+  const q = (document.getElementById('sb-q')?.value || '').trim();
+  if (!q) return false;
+  window.location.href = 'db_search.html?q=' + encodeURIComponent(q);
+  return false;
+}
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') document.body.classList.remove('sidebar-open');
 });
 (function highlightActive() {
   const page = location.pathname.split('/').pop().replace('.html','') || 'index';
+  const params = new URLSearchParams(location.search);
+
   document.querySelectorAll('.sb-btn[data-page]').forEach(btn => {
     if (btn.dataset.page === page) btn.classList.add('active');
+  });
+
+  // Match sub-items & auto-open matching accordion
+  let key = page;
+  if (page === 'db_items' && params.get('cat')) key = 'db_items:' + params.get('cat');
+  else if (page === 'db_zones' && params.get('ep')) key = 'db_zones:' + params.get('ep');
+  else if (page === 'db_production' && params.get('prof')) key = 'db_production:' + params.get('prof');
+  else if (page === 'db_events' && params.get('event')) key = 'db_events:' + params.get('event');
+  else if (page === 'db_guide' && params.get('page')) key = 'db_guide:' + params.get('page');
+
+  document.querySelectorAll('.sb-sub[data-match]').forEach(link => {
+    if (link.dataset.match === key) {
+      link.classList.add('active');
+      const acc = link.closest('.sb-acc');
+      if (acc) acc.classList.add('open');
+    }
   });
 })();
 </script>

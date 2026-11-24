@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="https://iruna-online.com/img/fankit/Colon_orange.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เควสต์ (Quests) | Iruna Online TH</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="db_common.css">
+</head>
+<body>
+<div id="stars"></div>
+<div id="sb-root"></div>
+
+<div class="hero">
+  <h1 class="hero-title">📜 เควสต์ทั้งหมด (Quests)</h1>
+  <p class="hero-desc">รายการเควสต์ทุก Episode แยกตามเมือง NPC เป้าหมาย ไอเทมที่ต้องหา และรางวัล</p>
+</div>
+
+<div class="main-wrapper">
+  <div class="tab-strip" id="ep-tabs"></div>
+
+  <div class="db-panel">
+    <div class="db-controls">
+      <input class="db-input" id="search-input" type="text" placeholder="ค้นหาชื่อเควสต์, เมือง, NPC, รางวัล หรือมอนสเตอร์...">
+      <select class="db-select" id="zone-select" onchange="render()">
+        <option value="">ทุกเมือง / แผนที่</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-dim);cursor:pointer">
+        <input type="checkbox" id="skill-only" onchange="render()"> เฉพาะเควสต์สกิล
+      </label>
+    </div>
+  </div>
+
+  <div class="count-bar">
+    <span id="count-info">กำลังโหลด...</span>
+  </div>
+
+  <div id="quests-grid" class="db-grid"><div class="loader">กำลังโหลดข้อมูลเควสต์...</div></div>
+</div>
+
+<script src="db_common.js"></script>
+<script>
+DB.initSidebar();
+
+let ALL_EPS = [];
+let CURRENT_EP = 'all';
+
+async function init() {
+  try {
+    ALL_EPS = await DB.loadJSON('data/db/quests.json');
+    const q = DB.qs('q');
+    if (q) document.getElementById('search-input').value = q;
+
+    const total = ALL_EPS.reduce((s, e) => s + e.quests.length, 0);
+    document.getElementById('ep-tabs').innerHTML =
+      `<button class="tab-pill active" onclick="setEp('all', this)">ทั้งหมด (${total})</button>` +
+      ALL_EPS.map(e =>
+        `<button class="tab-pill" onclick="setEp('${DB.esc(e.id)}', this)">${DB.esc(e.label)} (${e.quests.length})</button>`
+      ).join('');
+
+    populateZones();
+    render();
+  } catch (e) {
+    document.getElementById('quests-grid').innerHTML = `<div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${DB.esc(e.message)}</div>`;
+  }
+}
+
+function getActiveQuests() {
+  if (CURRENT_EP === 'all') {
+    return ALL_EPS.flatMap(e => e.quests.map(q => ({ ...q, epLabel: e.label })));
+  }
+  const found = ALL_EPS.find(e => e.id === CURRENT_EP);
+  return found ? found.quests.map(q => ({ ...q, epLabel: found.label })) : [];
+}
+
+function populateZones() {
+  const qs = getActiveQuests();
+  const zones = Array.from(new Set(qs.map(q => q.zone).filter(Boolean))).sort();
+  const sel = document.getElementById('zone-select');
+  sel.innerHTML = `<option value="">ทุกเมือง / แผนที่ (${zones.length})</option>` +
+    zones.map(z => `<option value="${DB.esc(z)}">${DB.esc(z)}</option>`).join('');
+}
+
+function setEp(ep, btn) {
+  CURRENT_EP = ep;
+  document.querySelectorAll('#ep-tabs .tab-pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  populateZones();
+  render();
+}
+
+document.getElementById('search-input').addEventListener('input', render);
+
+function render() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  const zf = document.getElementById('zone-select').value;
+  const skillOnly = document.getElementById('skill-only').checked;
+
+  const list = getActiveQuests().filter(item => {
+    if (zf && item.zone !== zf) return false;
+    if (skillOnly && !item.skillReward) return false;
+    if (q) {
+      const hay = [
+        item.title, item.zone, item.npc, item.desc, item.reward, item.skillReward, item.req,
+        ...(item.objectives || []).map(o => o.text),
+      ].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('count-info').textContent = `พบ ${list.length.toLocaleString()} เควสต์`;
+  const grid = document.getElementById('quests-grid');
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">ไม่พบเควสต์ที่ตรงกับเงื่อนไข</div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(item => `
+    <div class="db-card">
+      <div class="db-card-title">
+        <span>${item.mq ? `<span class="badge gold" style="margin-right:6px">${DB.esc(item.mq)}</span>` : ''}${DB.esc(item.title)}</span>
+        <span class="badge">${DB.esc(item.epLabel)}</span>
+      </div>
+      <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:6px">
+        📍 ${item.zoneSlug ? `<a class="item-link" href="db_zones.html?zone=${encodeURIComponent(item.zoneSlug)}">${DB.esc(item.zone)}</a>` : DB.esc(item.zone)}
+        ${item.npc ? ` · NPC: <strong style="color:var(--text)">${DB.esc(item.npc)}</strong>` : ''}
+      </div>
+      ${item.desc ? `<div style="font-size:13px;margin-bottom:6px;color:#d6cde8">${DB.esc(item.desc)}</div>` : ''}
+      ${item.req ? `<div style="font-size:12.5px;margin-bottom:4px"><span class="badge orange">เงื่อนไข</span> ${DB.esc(item.req)}</div>` : ''}
+      ${item.skillReward ? `<div style="font-size:12.5px;margin-bottom:4px"><span class="badge purple">รางวัลสกิล</span> ${DB.esc(item.skillReward)}</div>` : ''}
+      ${item.reward ? `<div style="font-size:12.5px;margin-bottom:4px"><span class="badge green">รางวัล</span> ${
+        item.rewardItems && item.rewardItems.length
+          ? item.rewardItems.map(r => `<a class="item-link" href="javascript:void(0)" onclick="DB.openItemModal('${DB.esc(r.slug).replace(/'/g,"\\'")}', '${DB.esc(r.text).replace(/'/g,"\\'")}')">${DB.esc(r.text)}</a>`).join(', ')
+          : DB.esc(item.reward)
+      }</div>` : ''}
+      ${item.exp ? `<div style="font-size:12.5px;margin-bottom:4px"><span class="badge gold">EXP</span> ${DB.esc(item.exp)}</div>` : ''}
+      ${item.objectives && item.objectives.length ? `
+        <div style="font-size:12.5px;margin-top:5px;padding-top:5px;border-top:1px solid rgba(65,82,118,0.3)">
+          <strong style="color:var(--gold)">เป้าหมาย:</strong>
+          ${item.objectives.map(o => o.kind === 'item'
+            ? `<a class="item-link" href="javascript:void(0)" onclick="DB.openItemModal('${DB.esc(o.slug).replace(/'/g,"\\'")}', '${DB.esc(o.text).replace(/'/g,"\\'")}')">${DB.esc(o.text)}</a>`
+            : `<a class="item-link" style="color:#fda4af" href="db_search.html?q=${encodeURIComponent(o.slug)}">${DB.esc(o.text)}</a>`
+          ).join(', ')}
+        </div>` : ''}
+    </div>
+  `).join('');
+}
+
+init();
+</script>
+</body>
+</html>

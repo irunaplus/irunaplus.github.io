@@ -1,0 +1,32 @@
+[
+  {
+    "key": "Smithing",
+    "label": "ตีเหล็ก (Smithing)",
+    "count": 790
+  },
+  {
+    "key": "Carpentry",
+    "label": "ช่างไม้ (Carpentry)",
+    "count": 636
+  },
+  {
+    "key": "Tailoring",
+    "label": "ตัดเย็บ (Tailoring)",
+    "count": 667
+  },
+  {
+    "key": "Chasing",
+    "label": "แกะสลัก (Chasing)",
+    "count": 483
+  },
+  {
+    "key": "Alchemy",
+    "label": "เล่นแร่แปรธาตุ (Alchemy)",
+    "count": 600
+  },
+  {
+    "key": "Cooking",
+    "label": "ทำอาหาร (Cooking)",
+    "count": 351
+  }
+]

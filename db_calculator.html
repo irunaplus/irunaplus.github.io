@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="https://iruna-online.com/img/fankit/Colon_orange.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>คำนวณวัตถุดิบการผลิต (Materials Calculator) | Iruna Online TH</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="db_common.css">
+<style>
+  .calc-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 800px) { .calc-layout { grid-template-columns: 1fr; } }
+  .tree-node {
+    padding: 6px 10px; border-left: 2px solid var(--border-gold);
+    margin: 5px 0 5px 12px; background: rgba(24,31,52,0.55); border-radius: 0 6px 6px 0;
+    font-size: 13.5px;
+  }
+  .raw-row {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+    padding: 10px 12px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; margin-bottom: 8px;
+  }
+  .ac-list {
+    max-height: 260px; overflow-y: auto; margin-top: 8px;
+    border: 1px solid var(--border); border-radius: 8px; background: rgba(12,16,30,0.96);
+    display: none;
+  }
+  .ac-list.open { display: block; }
+  .ac-item {
+    padding: 8px 12px; cursor: pointer; font-size: 13.5px;
+    display: flex; justify-content: space-between; gap: 8px;
+    border-bottom: 1px solid rgba(65,82,118,0.25);
+  }
+  .ac-item:hover { background: rgba(63,200,249,0.12); color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="stars"></div>
+<div id="sb-root"></div>
+
+<div class="hero">
+  <h1 class="hero-title">🧮 คำนวณวัตถุดิบการผลิต</h1>
+  <p class="hero-desc">เลือกไอเทมที่ต้องการผลิต ระบบจะแตกสูตรย่อยอัตโนมัติและรวมวัตถุดิบตั้งต้นพร้อมจุดดรอปให้ครบ</p>
+</div>
+
+<div class="main-wrapper">
+  <div class="db-panel">
+    <div class="db-controls">
+      <div style="flex:1;min-width:240px;position:relative">
+        <input class="db-input" id="item-search" type="text" placeholder="พิมพ์ชื่อไอเทมที่ต้องการผลิต..." autocomplete="off" style="width:100%">
+        <div class="ac-list" id="ac-list"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <label for="qty-input" style="font-size:13px;color:var(--text-dim)">จำนวน:</label>
+        <input class="db-input" id="qty-input" type="number" min="1" max="9999" value="1" style="width:90px;flex:none;min-width:0">
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-dim);cursor:pointer">
+        <input type="checkbox" id="recursive-chk" checked onchange="calculate()"> แตกสูตรย่อยอัตโนมัติ
+      </label>
+    </div>
+  </div>
+
+  <div id="calc-output">
+    <div class="empty-state">ค้นหาและเลือกไอเทมด้านบนเพื่อคำนวณวัตถุดิบทั้งหมด</div>
+  </div>
+</div>
+
+<script src="db_common.js"></script>
+<script>
+DB.initSidebar();
+
+let ALL_RECIPES = [];
+let CRAFT_MAP = {}; // slug -> primary crafting recipe (excluding self-reinforce recipes where mat == item)
+let XREF = {};
+let SELECTED_SLUG = '';
+
+async function init() {
+  try {
+    const [recs, xref] = await Promise.all([
+      DB.loadJSON('data/db/production_all.json'),
+      DB.loadJSON('data/db/item_xref.json'),
+    ]);
+    ALL_RECIPES = recs;
+    XREF = xref;
+
+    // Build CRAFT_MAP: prefer non-reinforcement recipes (where item isn't its own only material)
+    for (const r of recs) {
+      const isSelfOnly = r.mats.length === 1 && r.mats[0].slug === r.slug;
+      if (isSelfOnly) continue;
+      if (!CRAFT_MAP[r.slug] || r.lv < CRAFT_MAP[r.slug].lv) {
+        CRAFT_MAP[r.slug] = r;
+      }
+    }
+
+    const qItem = DB.qs('item');
+    if (qItem && CRAFT_MAP[qItem]) {
+      selectItem(qItem);
+    }
+  } catch (e) {
+    document.getElementById('calc-output').innerHTML = `<div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${DB.esc(e.message)}</div>`;
+  }
+}
+
+const searchEl = document.getElementById('item-search');
+const acEl = document.getElementById('ac-list');
+
+searchEl.addEventListener('input', () => {
+  const q = searchEl.value.trim().toLowerCase();
+  if (!q) { acEl.classList.remove('open'); return; }
+  const matches = Object.values(CRAFT_MAP)
+    .filter(r => r.name.toLowerCase().includes(q) || r.slug.toLowerCase().includes(q))
+    .slice(0, 40);
+  if (!matches.length) {
+    acEl.innerHTML = `<div style="padding:10px;color:var(--text-dim);font-size:13px">ไม่พบสูตรผลิตที่ตรงกัน</div>`;
+  } else {
+    acEl.innerHTML = matches.map(r => `
+      <div class="ac-item" onclick="selectItem('${DB.esc(r.slug).replace(/'/g,"\\'")}')">
+        <span>${DB.esc(r.name)}</span>
+        <span class="badge purple">${DB.esc(r.prof)} Lv.${r.lv}</span>
+      </div>
+    `).join('');
+  }
+  acEl.classList.add('open');
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#item-search') && !e.target.closest('#ac-list')) {
+    acEl.classList.remove('open');
+  }
+});
+
+document.getElementById('qty-input').addEventListener('input', calculate);
+
+function selectItem(slug) {
+  SELECTED_SLUG = slug;
+  const r = CRAFT_MAP[slug];
+  if (r) searchEl.value = r.name;
+  acEl.classList.remove('open');
+  calculate();
+}
+
+function expandRecipe(slug, needQty, recursive, visited, rawTotals) {
+  const r = CRAFT_MAP[slug];
+  if (!r || visited.has(slug)) {
+    rawTotals[slug] = (rawTotals[slug] || 0) + needQty;
+    return { slug, name: r ? r.name : slug, qty: needQty, raw: true };
+  }
+  const batches = Math.ceil(needQty / (r.qty || 1));
+  const nextVisited = new Set(visited);
+  nextVisited.add(slug);
+
+  const children = (r.mats || []).map(m => {
+    const matNeed = m.qty * batches;
+    if (recursive && CRAFT_MAP[m.slug] && !nextVisited.has(m.slug)) {
+      return expandRecipe(m.slug, matNeed, recursive, nextVisited, rawTotals);
+    } else {
+      rawTotals[m.slug] = rawTotals[m.slug] || { name: m.name, qty: 0 };
+      if (typeof rawTotals[m.slug] === 'number') rawTotals[m.slug] = { name: m.name, qty: rawTotals[m.slug] };
+      rawTotals[m.slug].qty += matNeed;
+      return { slug: m.slug, name: m.name, qty: matNeed, raw: true };
+    }
+  });
+
+  return {
+    slug: r.slug, name: r.name, qty: needQty, batches, prof: r.prof, lv: r.lv, raw: false, children
+  };
+}
+
+function renderTree(node) {
+  const label = node.raw
+    ? `<a class="item-link" href="javascript:void(0)" onclick="DB.openItemModal('${DB.esc(node.slug).replace(/'/g,"\\'")}', '${DB.esc(node.name).replace(/'/g,"\\'")}')">${DB.esc(node.name)}</a> <strong style="color:var(--gold-light)">x${node.qty.toLocaleString()}</strong>`
+    : `<a class="item-link" href="javascript:void(0)" onclick="DB.openItemModal('${DB.esc(node.slug).replace(/'/g,"\\'")}', '${DB.esc(node.name).replace(/'/g,"\\'")}')">${DB.esc(node.name)}</a> <strong style="color:var(--gold-light)">x${node.qty.toLocaleString()}</strong> <span class="badge purple">${DB.esc(node.prof)} Lv.${node.lv}</span>`;
+
+  if (!node.children || !node.children.length) {
+    return `<div class="tree-node">${label}</div>`;
+  }
+  return `<div class="tree-node">${label}${node.children.map(renderTree).join('')}</div>`;
+}
+
+function calculate() {
+  const out = document.getElementById('calc-output');
+  if (!SELECTED_SLUG || !CRAFT_MAP[SELECTED_SLUG]) return;
+  const qty = Math.max(1, parseInt(document.getElementById('qty-input').value, 10) || 1);
+  const recursive = document.getElementById('recursive-chk').checked;
+
+  const rawTotals = {};
+  const tree = expandRecipe(SELECTED_SLUG, qty, recursive, new Set(), rawTotals);
+
+  const rawList = Object.entries(rawTotals).map(([slug, val]) => ({
+    slug,
+    name: typeof val === 'object' ? val.name : slug,
+    qty: typeof val === 'object' ? val.qty : val,
+  })).sort((a, b) => b.qty - a.qty);
+
+  let rawHtml = rawList.map(m => {
+    const info = XREF[m.slug] || {};
+    const drops = (info.drops || []).slice(0, 3);
+    const dropStr = drops.length
+      ? drops.map(d => `${DB.esc(d.m)} (Lv.${DB.esc(d.lv)}) @ ${DB.esc(d.z)}`).join(' · ')
+      : '';
+    return `<div class="raw-row">
+      <div style="min-width:0">
+        <a class="item-link" style="font-weight:700" href="javascript:void(0)" onclick="DB.openItemModal('${DB.esc(m.slug).replace(/'/g,"\\'")}', '${DB.esc(m.name).replace(/'/g,"\\'")}')">${DB.esc(m.name)}</a>
+        ${dropStr ? `<div style="font-size:12px;color:var(--text-dim);margin-top:3px">ดรอป: ${dropStr}</div>` : ''}
+      </div>
+      <span class="badge gold" style="font-size:13px;flex-shrink:0">x${m.qty.toLocaleString()}</span>
+    </div>`;
+  }).join('');
+
+  out.innerHTML = `<div class="calc-layout">
+    <div class="db-panel">
+      <h3 style="color:var(--gold-light);margin-bottom:10px;font-size:16px">📦 สรุปวัตถุดิบตั้งต้นทั้งหมด (${rawList.length} ชนิด)</h3>
+      ${rawHtml || '<div style="color:var(--text-dim)">ไม่มีวัตถุดิบ</div>'}
+    </div>
+    <div class="db-panel">
+      <h3 style="color:var(--gold-light);margin-bottom:10px;font-size:16px">🌳 แผนผังขั้นตอนการผลิต</h3>
+      ${renderTree(tree)}
+    </div>
+  </div>`;
+}
+
+init();
+</script>
+</body>
+</html>

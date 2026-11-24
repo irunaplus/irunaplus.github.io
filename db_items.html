@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="https://iruna-online.com/img/fankit/Colon_orange.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ไอเทม &amp; อุปกรณ์ | Iruna Online TH</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="db_common.css">
+</head>
+<body>
+<div id="stars"></div>
+<div id="sb-root"></div>
+
+<div class="hero">
+  <h1 class="hero-title" id="page-title">🛡️ ไอเทม &amp; อุปกรณ์</h1>
+  <p class="hero-desc" id="page-desc">ฐานข้อมูลอาวุธ ชุดเกราะ คริสต้า และไอเทมทั้งหมด พร้อมตัวกรองสเตตัสและข้อมูลดรอป</p>
+</div>
+
+<div class="main-wrapper">
+  <div class="tab-strip" id="cat-tabs"></div>
+
+  <div class="db-panel">
+    <div class="db-controls">
+      <input class="db-input" id="search-input" type="text" placeholder="ค้นหาชื่อไอเทม หรือค่าสถานะ (เช่น ATK, Autoskill, Skill Delay, ธาตุไฟ)...">
+      <select class="db-select" id="stat-mode" onchange="render()">
+        <option value="both">แสดงทั้งไทย + True Stats</option>
+        <option value="th">แสดงเฉพาะคำอธิบายไทย</option>
+        <option value="en">แสดงเฉพาะ True Stats</option>
+      </select>
+      <button type="button" class="db-btn secondary" id="attr-toggle-btn" onclick="toggleAttrPanel()">🎯 กรองสเตตัส</button>
+    </div>
+    <div id="attr-panel" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:12px;color:var(--gold);font-weight:700;">เลือกคุณสมบัติที่ต้องการกรอง (เลือกได้หลายข้อ)</span>
+        <button type="button" class="chip" onclick="clearAttrs()">ล้างตัวกรอง</button>
+      </div>
+      <div class="chip-wrap" id="attr-chips"></div>
+    </div>
+  </div>
+
+  <div class="count-bar">
+    <span id="count-info">กำลังโหลด...</span>
+    <span style="font-size:12px">💡 คลิกที่ชื่อไอเทมเพื่อดูมอนสเตอร์ที่ดรอป ช่างตีเหล็ก และสูตรการผลิต</span>
+  </div>
+
+  <div id="items-grid" class="db-grid"><div class="loader">กำลังโหลดข้อมูล...</div></div>
+  <div class="pager" id="pager"></div>
+</div>
+
+<script src="db_common.js"></script>
+<script>
+DB.initSidebar();
+
+let META = null;
+let CURRENT_CAT = DB.qs('cat') || 'Swords';
+let ITEMS = [];
+let SELECTED_ATTRS = new Set();
+let PAGE = 1;
+const PER_PAGE = 60;
+
+function toggleAttrPanel() {
+  const p = document.getElementById('attr-panel');
+  const open = p.style.display === 'none';
+  p.style.display = open ? 'block' : 'none';
+  document.getElementById('attr-toggle-btn').classList.toggle('active', open);
+}
+
+function clearAttrs() {
+  SELECTED_ATTRS.clear();
+  document.querySelectorAll('#attr-chips .chip').forEach(c => c.classList.remove('active'));
+  PAGE = 1;
+  render();
+}
+
+async function init() {
+  try {
+    META = await DB.loadJSON('data/db/items_meta.json');
+    const directItem = DB.qs('item');
+    const initQ = DB.qs('q');
+    if (initQ) document.getElementById('search-input').value = initQ;
+
+    // Determine category group for tab bar
+    const curObj = META.categories.find(c => c.key === CURRENT_CAT) || META.categories[0];
+    CURRENT_CAT = curObj.key;
+
+    // Render category tabs (show same group + switcher)
+    renderCatTabs(curObj.group);
+
+    // Render attribute filter chips
+    const chipsEl = document.getElementById('attr-chips');
+    chipsEl.innerHTML = (META.attrFilters || []).filter(f => f.key !== 'default_attr').map(f =>
+      `<button type="button" class="chip" data-attr="${DB.esc(f.key)}" onclick="toggleAttr(this,'${DB.esc(f.key)}')">${DB.esc(f.label)}</button>`
+    ).join('');
+
+    await loadCategory(CURRENT_CAT);
+
+    if (directItem) {
+      DB.openItemModal(directItem);
+    }
+  } catch (e) {
+    document.getElementById('items-grid').innerHTML = `<div class="empty-state">ไม่สามารถโหลดข้อมูลได้: ${DB.esc(e.message)}</div>`;
+  }
+}
+
+function renderCatTabs(group) {
+  const tabsEl = document.getElementById('cat-tabs');
+  const cats = META.categories.filter(c => c.group === group);
+  const otherGroup = group === 'equipment' ? 'item' : 'equipment';
+  const otherLabel = group === 'equipment' ? '🎒 สลับไปหมวดไอเทม (Items)' : '🛡️ สลับไปหมวดอุปกรณ์ (Equipment)';
+  const firstOther = META.categories.find(c => c.group === otherGroup);
+
+  tabsEl.innerHTML = cats.map(c =>
+    `<a class="tab-pill ${c.key === CURRENT_CAT ? 'active' : ''}" href="db_items.html?cat=${encodeURIComponent(c.key)}">${DB.esc(c.label)} <span style="opacity:.7">(${c.count})</span></a>`
+  ).join('') + (firstOther ? `<a class="tab-pill" style="border-style:dashed;color:var(--gold)" href="db_items.html?cat=${encodeURIComponent(firstOther.key)}">${otherLabel}</a>` : '');
+}
+
+function toggleAttr(btn, key) {
+  if (SELECTED_ATTRS.has(key)) {
+    SELECTED_ATTRS.delete(key);
+    btn.classList.remove('active');
+  } else {
+    SELECTED_ATTRS.add(key);
+    btn.classList.add('active');
+  }
+  PAGE = 1;
+  render();
+}
+
+async function loadCategory(cat) {
+  const metaObj = META.categories.find(c => c.key === cat);
+  document.getElementById('page-title').textContent = (metaObj?.group === 'equipment' ? '🛡️ ' : '🎒 ') + (metaObj ? metaObj.label : cat);
+  document.title = (metaObj ? metaObj.label : cat) + ' | Iruna Online TH';
+  ITEMS = await DB.loadJSON(`data/db/items/${cat}.json`);
+  PAGE = 1;
+  render();
+}
+
+document.getElementById('search-input').addEventListener('input', () => {
+  PAGE = 1;
+  render();
+});
+
+function render() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  const mode = document.getElementById('stat-mode').value;
+  const reqAttrs = Array.from(SELECTED_ATTRS);
+
+  const filtered = ITEMS.filter(it => {
+    if (reqAttrs.length) {
+      const aSet = new Set(it.attrs || []);
+      for (const ra of reqAttrs) if (!aSet.has(ra)) return false;
+    }
+    if (q) {
+      const hay = (it.name + ' ' + it.slug + ' ' + (it.ds || '') + ' ' + (it.tds || '') + ' ' + (it.notes || '')).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  if (PAGE > totalPages) PAGE = totalPages;
+  const start = (PAGE - 1) * PER_PAGE;
+  const slice = filtered.slice(start, start + PER_PAGE);
+
+  document.getElementById('count-info').textContent =
+    `พบ ${filtered.length.toLocaleString()} รายการ (หน้า ${PAGE}/${totalPages})`;
+
+  const grid = document.getElementById('items-grid');
+  if (!slice.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">ไม่พบไอเทมที่ตรงกับเงื่อนไข</div>`;
+    document.getElementById('pager').innerHTML = '';
+    return;
+  }
+
+  grid.innerHTML = slice.map(it => `
+    <div class="db-card">
+      <div class="db-card-title">
+        <a href="javascript:void(0)" onclick="DB.openItemModal('${DB.esc(it.slug).replace(/'/g,"\\'")}', '${DB.esc(it.name).replace(/'/g,"\\'")}')">${DB.esc(it.name)}</a>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          ${it.atk ? `<span class="badge red">ATK ${DB.esc(it.atk)}</span>` : ''}
+          ${it.def ? `<span class="badge green">DEF ${DB.esc(it.def)}</span>` : ''}
+        </div>
+      </div>
+      ${(mode === 'both' || mode === 'th') && it.ds ? `<div class="stat-th">${DB.esc(it.ds)}</div>` : ''}
+      ${(mode === 'both' || mode === 'en') && it.tds ? `<div class="stat-en">${DB.esc(it.tds)}</div>` : ''}
+      ${it.notes ? `<div class="stat-notes">📝 ${DB.esc(it.notes)}</div>` : ''}
+    </div>
+  `).join('');
+
+  // Pager
+  const pager = document.getElementById('pager');
+  if (totalPages <= 1) {
+    pager.innerHTML = '';
+  } else {
+    pager.innerHTML = `
+      <button class="db-btn secondary" ${PAGE <= 1 ? 'disabled' : ''} onclick="goPage(${PAGE - 1})">← ก่อนหน้า</button>
+      <span style="color:var(--text-dim);font-size:13px">หน้า ${PAGE} / ${totalPages}</span>
+      <button class="db-btn secondary" ${PAGE >= totalPages ? 'disabled' : ''} onclick="goPage(${PAGE + 1})">ถัดไป →</button>
+    `;
+  }
+}
+
+function goPage(p) {
+  PAGE = p;
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="https://iruna-online.com/img/fankit/Colon_orange.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>คู่มือ (Guides) | Iruna Online TH</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="db_common.css">
+</head>
+<body>
+<div id="stars"></div>
+<div id="sb-root"></div>
+
+<div class="hero">
+  <h1 class="hero-title" id="hero-title">📚 คู่มือ Iruna Online</h1>
+  <p class="hero-desc" id="hero-desc">คลังคู่มือข้อมูลระบบเกมทั้งหมดจาก Iruna Online Database</p>
+</div>
+
+<div class="main-wrapper">
+  <div class="tab-strip" id="guide-tabs"></div>
+  <div id="sub-toolbar"></div>
+  <div id="guide-body"><div class="loader">กำลังโหลดคู่มือ...</div></div>
+</div>
+
+<script src="db_common.js"></script>
+<script>
+DB.initSidebar();
+
+const GUIDE_LIST = [
+  { key: 'pets', label: '🐾 สัตว์เลี้ยง (Pets)' },
+  { key: 'classes', label: '⚔️ อาชีพ (Classes)' },
+  { key: 'stats', label: '📈 ค่าสถานะ (Stats)' },
+  { key: 'skills', label: '✨ สกิล (Skills)' },
+  { key: 'abilities', label: '⭐ อบิลิตี้ (☆Abilities)' },
+  { key: 'abilities2', label: '🎯 ดรอปอบิลิตี้ (Beta)' },
+  { key: 'apostolia', label: '🔮 Apostolia' },
+  { key: 'refinement', label: '🔨 การตีบวก' },
+  { key: 'raids', label: '🐉 เรดบอส (Raids)' },
+  { key: 'lottery', label: '🎰 ลอตเตอรี่' },
+  { key: 'background_music', label: '🎵 เพลงประกอบ' },
+];
+
+const PAGE_KEY = DB.qs('page') || 'pets';
+
+async function init() {
+  document.getElementById('guide-tabs').innerHTML = GUIDE_LIST.map(g =>
+    `<a class="tab-pill ${g.key === PAGE_KEY ? 'active' : ''}" href="db_guide.html?page=${encodeURIComponent(g.key)}">${DB.esc(g.label)}</a>`
+  ).join('') + `<a class="tab-pill" href="db_quests.html">📜 เควสต์ (Quests)</a>`;
+
+  const meta = GUIDE_LIST.find(g => g.key === PAGE_KEY) || GUIDE_LIST[0];
+  document.getElementById('hero-title').textContent = meta.label;
+  document.title = meta.label + ' | Iruna Online TH';
+
+  try {
+    const data = await DB.loadJSON(`data/db/guides/${meta.key}.json`);
+
+    if (meta.key === 'classes') {
+      renderClasses(data);
+    } else if (meta.key === 'skills') {
+      renderSkills(data);
+    } else if (meta.key === 'abilities2') {
+      renderAbilities2(data);
+    } else {
+      renderStaticGuide(data);
+    }
+  } catch (e) {
+    document.getElementById('guide-body').innerHTML = `<div class="empty-state">โหลดคู่มือไม่สำเร็จ: ${DB.esc(e.message)}</div>`;
+  }
+}
+
+function renderStaticGuide(data) {
+  document.getElementById('sub-toolbar').innerHTML = `
+    <div class="db-panel">
+      <div class="db-controls">
+        <input class="db-input" id="guide-search" type="text" placeholder="ค้นหาข้อความในหน้าคู่มือนี้...">
+      </div>
+    </div>`;
+  const body = document.getElementById('guide-body');
+  body.innerHTML = `<div class="guide-content" id="guide-html">${data.html || '<p>ไม่มีข้อมูล</p>'}</div>`;
+
+  document.getElementById('guide-search').addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase();
+    const container = document.getElementById('guide-html');
+    container.querySelectorAll('tr, p, li').forEach(el => {
+      if (!q) { el.style.display = ''; return; }
+      // keep table header rows visible
+      if (el.tagName === 'TR' && el.querySelector('th')) { el.style.display = ''; return; }
+      el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+}
+
+function renderClasses(data) {
+  const initCls = DB.qs('class') || '';
+  const list = data.classList || [];
+  document.getElementById('sub-toolbar').innerHTML = `
+    <div class="db-panel">
+      <div style="font-size:12.5px;color:var(--gold);margin-bottom:8px;font-weight:700">เลือกอาชีพเพื่อดูเงื่อนไขการเปลี่ยนอาชีพและสกิล:</div>
+      <div class="chip-wrap" id="cls-chips">
+        <button class="chip ${!initCls ? 'active' : ''}" onclick="showClass('', this)">🌳 ผังสายอาชีพทั้งหมด</button>
+        ${list.map(c => `<button class="chip ${initCls === c ? 'active' : ''}" onclick="showClass('${DB.esc(c).replace(/'/g,"\\'")}', this)">${DB.esc(c)}</button>`).join('')}
+      </div>
+    </div>`;
+
+  window.showClass = function (cls, btn) {
+    if (btn) {
+      document.querySelectorAll('#cls-chips .chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    const html = cls && data.details[cls]
+      ? `<h2 style="margin-top:0">${DB.esc(cls)}</h2>${data.details[cls]}`
+      : data.treeHtml;
+    document.getElementById('guide-body').innerHTML = `<div class="guide-content">${html || '<p>ไม่มีข้อมูล</p>'}</div>`;
+  };
+  showClass(initCls);
+}
+
+function renderSkills(data) {
+  const list = data.classList || [];
+  const initCls = (DB.qs('class') && data.byClass[DB.qs('class')]) ? DB.qs('class') : (list[0] || '');
+  document.getElementById('sub-toolbar').innerHTML = `
+    <div class="db-panel">
+      <div class="db-controls">
+        <select class="db-select" id="sk-class-sel" onchange="showSkillClass(this.value)">
+          ${list.map(c => `<option value="${DB.esc(c)}" ${c === initCls ? 'selected' : ''}>${DB.esc(c)}</option>`).join('')}
+        </select>
+        <input class="db-input" id="sk-filter" type="text" placeholder="ค้นหาชื่อสกิลหรือคำอธิบาย...">
+      </div>
+      <div class="chip-wrap" id="sk-chips" style="margin-top:10px">
+        ${list.map(c => `<button class="chip ${c === initCls ? 'active' : ''}" onclick="selectSkillChip('${DB.esc(c).replace(/'/g,"\\'")}')">${DB.esc(c)}</button>`).join('')}
+      </div>
+    </div>`;
+
+  window.selectSkillChip = function (cls) {
+    document.getElementById('sk-class-sel').value = cls;
+    showSkillClass(cls);
+  };
+  window.showSkillClass = function (cls) {
+    document.querySelectorAll('#sk-chips .chip').forEach(c => c.classList.toggle('active', c.textContent === cls));
+    const html = data.byClass[cls] || '<p>ไม่มีข้อมูลสกิล</p>';
+    document.getElementById('guide-body').innerHTML = `<div class="guide-content" id="sk-html"><h2 style="margin-top:0">✨ สกิลอาชีพ: ${DB.esc(cls)}</h2>${html}</div>`;
+    applySkillFilter();
+  };
+  function applySkillFilter() {
+    const q = (document.getElementById('sk-filter')?.value || '').trim().toLowerCase();
+    const box = document.getElementById('sk-html');
+    if (!box) return;
+    box.querySelectorAll('table').forEach(tbl => {
+      tbl.style.display = (!q || tbl.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    });
+  }
+  document.getElementById('sk-filter').addEventListener('input', applySkillFilter);
+  showSkillClass(initCls);
+}
+
+function renderAbilities2(data) {
+  const list = data.list || [];
+  const initAb = (DB.qs('ability') && data.details[DB.qs('ability')]) ? DB.qs('ability') : (list[0]?.key || '');
+  document.getElementById('sub-toolbar').innerHTML = `
+    <div class="db-panel">
+      <div class="db-controls">
+        <select class="db-select" id="ab-sel" onchange="showAbility(this.value)">
+          ${list.map(a => `<option value="${DB.esc(a.key)}" ${a.key === initAb ? 'selected' : ''}>☆ ${DB.esc(a.label)}</option>`).join('')}
+        </select>
+        <input class="db-input" id="ab-filter" type="text" placeholder="กรองชื่อมอนสเตอร์ หรืออุปกรณ์ที่ดรอป...">
+      </div>
+      <div class="chip-wrap" id="ab-chips" style="margin-top:10px">
+        ${list.map(a => `<button class="chip ${a.key === initAb ? 'active' : ''}" data-key="${DB.esc(a.key)}" onclick="selectAbChip('${DB.esc(a.key)}')">☆${DB.esc(a.label)}</button>`).join('')}
+      </div>
+    </div>`;
+
+  window.selectAbChip = function (key) {
+    document.getElementById('ab-sel').value = key;
+    showAbility(key);
+  };
+  window.showAbility = function (key) {
+    const item = list.find(a => a.key === key);
+    document.querySelectorAll('#ab-chips .chip').forEach(c => c.classList.toggle('active', c.dataset.key === key));
+    const html = data.details[key] || '<p>ไม่มีข้อมูล</p>';
+    document.getElementById('guide-body').innerHTML = `<div class="guide-content" id="ab-html"><h2 style="margin-top:0">⭐ ☆${DB.esc(item ? item.label : key)}</h2>${html}</div>`;
+    applyAbFilter();
+  };
+  function applyAbFilter() {
+    const q = (document.getElementById('ab-filter')?.value || '').trim().toLowerCase();
+    const box = document.getElementById('ab-html');
+    if (!box) return;
+    box.querySelectorAll('tr').forEach(tr => {
+      if (tr.querySelector('th')) return;
+      tr.style.display = (!q || tr.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    });
+  }
+  document.getElementById('ab-filter').addEventListener('input', applyAbFilter);
+  showAbility(initAb);
+}
+
+init();
+</script>
+</body>
+</html>

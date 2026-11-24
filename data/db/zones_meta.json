@@ -1,0 +1,56 @@
+[
+  {
+    "key": "EP1",
+    "label": "Episode 1",
+    "zoneCount": 115,
+    "monsterCount": 1227
+  },
+  {
+    "key": "EP2",
+    "label": "Episode 2",
+    "zoneCount": 59,
+    "monsterCount": 754
+  },
+  {
+    "key": "EP3",
+    "label": "Episode 3",
+    "zoneCount": 65,
+    "monsterCount": 488
+  },
+  {
+    "key": "EP4",
+    "label": "Episode 4",
+    "zoneCount": 33,
+    "monsterCount": 217
+  },
+  {
+    "key": "EP5",
+    "label": "Episode 5",
+    "zoneCount": 43,
+    "monsterCount": 196
+  },
+  {
+    "key": "EP6",
+    "label": "Episode 6",
+    "zoneCount": 56,
+    "monsterCount": 252
+  },
+  {
+    "key": "EP7",
+    "label": "Episode 7",
+    "zoneCount": 17,
+    "monsterCount": 40
+  },
+  {
+    "key": "Raids",
+    "label": "Raids",
+    "zoneCount": 33,
+    "monsterCount": 145
+  },
+  {
+    "key": "Events",
+    "label": "Events",
+    "zoneCount": 85,
+    "monsterCount": 1053
+  }
+]

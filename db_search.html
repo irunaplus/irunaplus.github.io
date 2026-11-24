@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="https://iruna-online.com/img/fankit/Colon_orange.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ค้นหาฐานข้อมูลทั้งหมด | Iruna Online TH</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="db_common.css">
+<style>
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 10px;
+    margin-bottom: 18px;
+  }
+  .stat-box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; text-align: center; text-decoration: none; transition: all .2s;
+  }
+  .stat-box:hover { border-color: var(--gold); transform: translateY(-2px); }
+  .stat-num { font-size: 22px; font-weight: 700; color: var(--gold-light); }
+  .stat-lbl { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .res-sec { margin-bottom: 22px; }
+  .res-sec-title {
+    font-size: 15px; font-weight: 700; color: var(--gold-light);
+    margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border-gold);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+</style>
+</head>
+<body>
+<div id="stars"></div>
+<div id="sb-root"></div>
+
+<div class="hero">
+  <h1 class="hero-title">🔍 ค้นหาฐานข้อมูล Iruna TH</h1>
+  <p class="hero-desc">ค้นหาไอเทม อุปกรณ์ มอนสเตอร์ แผนที่ เควสต์ และอบิลิตี้ทั้งหมดในที่เดียว</p>
+</div>
+
+<div class="main-wrapper">
+  <div class="db-panel">
+    <form class="db-controls" onsubmit="event.preventDefault(); doSearch();">
+      <input class="db-input" id="q-input" type="text" placeholder="พิมพ์ชื่อไอเทม, มอนสเตอร์, แผนที่, เควสต์ หรือ ☆อบิลิตี้..." autofocus>
+      <select class="db-select" id="type-filter" onchange="doSearch()">
+        <option value="all">ทุกหมวดหมู่</option>
+        <option value="items">ไอเทม / อุปกรณ์</option>
+        <option value="monsters">มอนสเตอร์</option>
+        <option value="zones">แผนที่ (Zones)</option>
+        <option value="quests">เควสต์</option>
+        <option value="abilities">☆อบิลิตี้</option>
+      </select>
+      <button class="db-btn" type="submit">🔍 ค้นหา</button>
+    </form>
+  </div>
+
+  <div id="stats-wrap"></div>
+  <div id="results-wrap"><div class="loader">กำลังโหลดดัชนีฐานข้อมูล...</div></div>
+</div>
+
+<script src="db_common.js"></script>
+<script>
+DB.initSidebar();
+
+let INDEX = null;
+
+async function init() {
+  try {
+    const [idx, stats] = await Promise.all([
+      DB.loadJSON('data/db/search_index.json'),
+      DB.loadJSON('data/db/db_stats.json').catch(() => null),
+    ]);
+    INDEX = idx;
+    if (stats) {
+      document.getElementById('stats-wrap').innerHTML = `
+        <div class="stats-grid">
+          <a class="stat-box" href="db_items.html?cat=Swords"><div class="stat-num">${stats.items.toLocaleString()}</div><div class="stat-lbl">ไอเทม &amp; อุปกรณ์</div></a>
+          <a class="stat-box" href="db_zones.html?ep=EP1"><div class="stat-num">${stats.zones.toLocaleString()}</div><div class="stat-lbl">แผนที่ (Zones)</div></a>
+          <a class="stat-box" href="db_zones.html?ep=EP1"><div class="stat-num">${stats.monsters.toLocaleString()}</div><div class="stat-lbl">มอนสเตอร์</div></a>
+          <a class="stat-box" href="db_production.html?prof=Smithing"><div class="stat-num">${stats.productionRecipes.toLocaleString()}</div><div class="stat-lbl">สูตรการผลิต</div></a>
+          <a class="stat-box" href="db_quests.html"><div class="stat-num">${stats.quests.toLocaleString()}</div><div class="stat-lbl">เควสต์</div></a>
+          <a class="stat-box" href="db_guide.html?page=abilities2"><div class="stat-num">${stats.abilities.toLocaleString()}</div><div class="stat-lbl">☆อบิลิตี้</div></a>
+        </div>`;
+    }
+    const initQ = DB.qs('q');
+    if (initQ) {
+      document.getElementById('q-input').value = initQ;
+      doSearch();
+    } else {
+      document.getElementById('results-wrap').innerHTML = `
+        <div class="empty-state">
+          พิมพ์คำค้นหาด้านบนเพื่อค้นหาข้อมูลทั้งหมดจากฐานข้อมูล Iruna Online ภาษาไทย<br>
+          <span style="font-size:12.5px">ตัวอย่าง: ดาบ, โคลอน, โลโคโค, รีไวตา, Attack, ◇</span>
+        </div>`;
+    }
+  } catch (e) {
+    document.getElementById('results-wrap').innerHTML = `<div class="empty-state">โหลดฐานข้อมูลไม่สำเร็จ: ${DB.esc(e.message)}</div>`;
+  }
+}
+
+let searchTimer = null;
+document.getElementById('q-input').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(doSearch, 180);
+});
+
+function doSearch() {
+  if (!INDEX) return;
+  const q = document.getElementById('q-input').value.trim();
+  const type = document.getElementById('type-filter').value;
+  const wrap = document.getElementById('results-wrap');
+
+  if (!q) {
+    wrap.innerHTML = `<div class="empty-state">พิมพ์คำค้นหาด้านบนเพื่อเริ่มค้นหา</div>`;
+    return;
+  }
+
+  const low = q.toLowerCase();
+  let html = '';
+  let totalHits = 0;
+
+  // 1. Items
+  if (type === 'all' || type === 'items') {
+    const hits = (INDEX.items || []).filter(x => x.n.toLowerCase().includes(low) || x.s.toLowerCase().includes(low) || x.c.toLowerCase().includes(low));
+    totalHits += hits.length;
+    if (hits.length) {
+      html += `<div class="res-sec"><div class="res-sec-title"><span>🎒 ไอเทม &amp; อุปกรณ์</span><span class="badge gold">${hits.length} รายการ</span></div><div class="db-grid">`;
+      for (const it of hits.slice(0, 60)) {
+        html += `<div class="db-card">
+          <div class="db-card-title">
+            <a href="javascript:void(0)" onclick="DB.openItemModal('${DB.esc(it.s).replace(/'/g,"\\'")}', '${DB.esc(it.n).replace(/'/g,"\\'")}')">${DB.esc(it.n)}</a>
+            <span class="badge">${DB.esc(it.c)}</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-dim)">คลิกเพื่อดูสเตตัส มอนสเตอร์ที่ดรอป และสูตรผลิต</div>
+        </div>`;
+      }
+      html += `</div>${hits.length > 60 ? `<p style="margin-top:8px;font-size:12.5px;color:var(--text-dim)">แสดง 60 จาก ${hits.length} รายการ (พิมพ์คำค้นให้เจาะจงขึ้น)</p>` : ''}</div>`;
+    }
+  }
+
+  // 2. Monsters
+  if (type === 'all' || type === 'monsters') {
+    const hits = (INDEX.monsters || []).filter(x => x.n.toLowerCase().includes(low) || x.z.toLowerCase().includes(low));
+    totalHits += hits.length;
+    if (hits.length) {
+      html += `<div class="res-sec"><div class="res-sec-title"><span>🐉 มอนสเตอร์</span><span class="badge red">${hits.length} ตัว</span></div><div class="db-grid">`;
+      for (const m of hits.slice(0, 60)) {
+        html += `<div class="db-card">
+          <div class="db-card-title">
+            <span>${DB.esc(m.n)}</span>
+            ${m.lv ? `<span class="badge red">Lv.${DB.esc(m.lv)}</span>` : ''}
+          </div>
+          <div style="font-size:13px;color:var(--text-dim)">
+            แผนที่: <a class="item-link" href="db_zones.html?ep=${encodeURIComponent(m.ep)}&zone=${encodeURIComponent(m.zs)}">${DB.esc(m.z)}</a>
+            ${m.a ? ` · ธาตุ: <span class="badge">${DB.esc(m.a)}</span>` : ''}
+          </div>
+        </div>`;
+      }
+      html += `</div></div>`;
+    }
+  }
+
+  // 3. Zones
+  if (type === 'all' || type === 'zones') {
+    const hits = (INDEX.zones || []).filter(x => x.n.toLowerCase().includes(low) || x.s.toLowerCase().includes(low));
+    totalHits += hits.length;
+    if (hits.length) {
+      html += `<div class="res-sec"><div class="res-sec-title"><span>🗺️ แผนที่ (Zones)</span><span class="badge green">${hits.length} แห่ง</span></div><div class="db-grid">`;
+      for (const z of hits.slice(0, 40)) {
+        html += `<div class="db-card">
+          <div class="db-card-title">
+            <a href="db_zones.html?ep=${encodeURIComponent(z.ep)}&zone=${encodeURIComponent(z.s)}">${DB.esc(z.n)}</a>
+            <span class="badge green">${DB.esc(z.ep)}</span>
+          </div>
+          <div style="font-size:12.5px;color:var(--text-dim)">มอนสเตอร์ ${z.mc} รายการ</div>
+        </div>`;
+      }
+      html += `</div></div>`;
+    }
+  }
+
+  // 4. Quests
+  if (type === 'all' || type === 'quests') {
+    const hits = (INDEX.quests || []).filter(x => x.n.toLowerCase().includes(low) || x.z.toLowerCase().includes(low) || (x.npc || '').toLowerCase().includes(low));
+    totalHits += hits.length;
+    if (hits.length) {
+      html += `<div class="res-sec"><div class="res-sec-title"><span>📜 เควสต์</span><span class="badge orange">${hits.length} เควสต์</span></div><div class="db-grid">`;
+      for (const qe of hits.slice(0, 40)) {
+        html += `<div class="db-card">
+          <div class="db-card-title">
+            <a href="db_quests.html?q=${encodeURIComponent(qe.n)}">${DB.esc(qe.n)}</a>
+            <span class="badge orange">${DB.esc(qe.ep)}</span>
+          </div>
+          <div style="font-size:12.5px;color:var(--text-dim)">${DB.esc(qe.z)}${qe.npc ? ' · NPC: ' + DB.esc(qe.npc) : ''}</div>
+        </div>`;
+      }
+      html += `</div></div>`;
+    }
+  }
+
+  // 5. Abilities
+  if (type === 'all' || type === 'abilities') {
+    const hits = (INDEX.abilities || []).filter(x => x.n.toLowerCase().includes(low) || x.s.toLowerCase().includes(low));
+    totalHits += hits.length;
+    if (hits.length) {
+      html += `<div class="res-sec"><div class="res-sec-title"><span>⭐ อบิลิตี้</span><span class="badge purple">${hits.length} รายการ</span></div><div class="db-grid">`;
+      for (const a of hits) {
+        html += `<div class="db-card">
+          <div class="db-card-title">
+            <a href="db_guide.html?page=abilities2&ability=${encodeURIComponent(a.s)}">${DB.esc(a.n)}</a>
+          </div>
+        </div>`;
+      }
+      html += `</div></div>`;
+    }
+  }
+
+  if (totalHits === 0) {
+    wrap.innerHTML = `<div class="empty-state">ไม่พบข้อมูลที่ตรงกับ "<strong>${DB.esc(q)}</strong>"</div>`;
+  } else {
+    wrap.innerHTML = html;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

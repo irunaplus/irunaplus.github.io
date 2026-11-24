@@ -1,0 +1,149 @@
+{
+  "categories": [
+    {
+      "key": "Swords",
+      "label": "ดาบ (Swords)",
+      "group": "equipment",
+      "count": 405
+    },
+    {
+      "key": "Bows",
+      "label": "ธนู (Bows)",
+      "group": "equipment",
+      "count": 310
+    },
+    {
+      "key": "Canes",
+      "label": "ไม้เท้า (Canes)",
+      "group": "equipment",
+      "count": 340
+    },
+    {
+      "key": "Claws",
+      "label": "กรงเล็บ (Claws)",
+      "group": "equipment",
+      "count": 278
+    },
+    {
+      "key": "Throwing",
+      "label": "อาวุธขว้าง (Throwing)",
+      "group": "equipment",
+      "count": 236
+    },
+    {
+      "key": "Armor",
+      "label": "ชุดเกราะ (Armor)",
+      "group": "equipment",
+      "count": 281
+    },
+    {
+      "key": "Additional",
+      "label": "อุปกรณ์เสริม (Additional)",
+      "group": "equipment",
+      "count": 992
+    },
+    {
+      "key": "Special",
+      "label": "อุปกรณ์พิเศษ (Special)",
+      "group": "equipment",
+      "count": 559
+    },
+    {
+      "key": "Crystas",
+      "label": "คริสต้า ◇ (Crystas)",
+      "group": "equipment",
+      "count": 611
+    },
+    {
+      "key": "AlCrystas",
+      "label": "อัลคริสต้า ▲ (Al Crystas)",
+      "group": "equipment",
+      "count": 206
+    },
+    {
+      "key": "RelicCrystas",
+      "label": "เรลิกคริสต้า □ (Relic Crystas)",
+      "group": "equipment",
+      "count": 207
+    },
+    {
+      "key": "Recovery",
+      "label": "ฟื้นฟู (Recovery)",
+      "group": "item",
+      "count": 324
+    },
+    {
+      "key": "Status",
+      "label": "แก้สถานะ (Status)",
+      "group": "item",
+      "count": 31
+    },
+    {
+      "key": "Strengthening",
+      "label": "เพิ่มพลัง/บัฟ (Strengthening)",
+      "group": "item",
+      "count": 391
+    },
+    {
+      "key": "Teleport",
+      "label": "วาร์ป (Teleport)",
+      "group": "item",
+      "count": 75
+    },
+    {
+      "key": "Skills",
+      "label": "หนังสือสกิล (Skill)",
+      "group": "item",
+      "count": 186
+    },
+    {
+      "key": "Chests",
+      "label": "กล่องสมบัติ (Chests)",
+      "group": "item",
+      "count": 43
+    },
+    {
+      "key": "Collectibles",
+      "label": "ของสะสม/วัตถุดิบ (Collectibles)",
+      "group": "item",
+      "count": 1757
+    },
+    {
+      "key": "Ores",
+      "label": "แร่ตีบวก (Ores)",
+      "group": "item",
+      "count": 65
+    },
+    {
+      "key": "IslandItems",
+      "label": "ของแต่งเกาะ (Island Objects)",
+      "group": "item",
+      "count": 113
+    },
+    {
+      "key": "Points",
+      "label": "ไอเทมช็อป (Store Items)",
+      "group": "item",
+      "count": 0
+    },
+    {
+      "key": "Pets",
+      "label": "ไข่/อาหารสัตว์เลี้ยง (Pets)",
+      "group": "item",
+      "count": 127
+    },
+    {
+      "key": "Fish",
+      "label": "ปลา/ตกปลา (Fish)",
+      "group": "item",
+      "count": 22
+    },
+    {
+      "key": "Other",
+      "label": "อื่นๆ (Other)",
+      "group": "item",
+      "count": 0
+    }
+  ],
+  "attrFilters": []
+}

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="https://iruna-online.com/img/fankit/Colon_orange.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>อีเวนต์ (Events) | Iruna Online TH</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="db_common.css">
+</head>
+<body>
+<div id="stars"></div>
+<div id="sb-root"></div>
+
+<div class="hero">
+  <h1 class="hero-title" id="hero-title">🎉 อีเวนต์ (Events)</h1>
+  <p class="hero-desc">ข้อมูลอีเวนต์ประจำปี บอส มอนสเตอร์ ของดรอป และเควสต์อีเวนต์ทั้งหมด</p>
+</div>
+
+<div class="main-wrapper">
+  <div class="tab-strip" id="ev-tabs"></div>
+
+  <div class="db-panel">
+    <div class="db-controls">
+      <input class="db-input" id="search-input" type="text" placeholder="กรองชื่อมอนสเตอร์ หรือของดรอปในอีเวนต์นี้...">
+      <button type="button" class="db-btn secondary active" id="btn-structured" onclick="setView('structured')">🐉 มุมมองการ์ด</button>
+      <button type="button" class="db-btn secondary" id="btn-full" onclick="setView('full')">📄 ข้อมูลฉบับเต็มทั้งหมด</button>
+    </div>
+  </div>
+
+  <div id="ev-body"><div class="loader">กำลังโหลดข้อมูลอีเวนต์...</div></div>
+</div>
+
+<script src="db_common.js"></script>
+<script>
+DB.initSidebar();
+
+let EVENTS = [];
+let CURRENT_KEY = DB.qs('event') || 'anniversary';
+let VIEW_MODE = 'structured';
+
+async function init() {
+  try {
+    EVENTS = await DB.loadJSON('data/db/events.json');
+    if (!EVENTS.find(e => e.key === CURRENT_KEY)) CURRENT_KEY = EVENTS[0].key;
+
+    document.getElementById('ev-tabs').innerHTML = EVENTS.map(e =>
+      `<a class="tab-pill ${e.key === CURRENT_KEY ? 'active' : ''}" href="db_events.html?event=${encodeURIComponent(e.key)}">${DB.esc(e.label)}</a>`
+    ).join('');
+
+    const cur = EVENTS.find(e => e.key === CURRENT_KEY);
+    document.getElementById('hero-title').textContent = '🎉 ' + cur.label;
+    document.title = cur.label + ' | Iruna Online TH';
+    // If an event has no parsed monsters (pure guide/tables), default to full HTML view
+    if (!cur.monsters.length && !cur.quests.length) VIEW_MODE = 'full';
+    updateViewBtns();
+    render();
+  } catch (e) {
+    document.getElementById('ev-body').innerHTML = `<div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${DB.esc(e.message)}</div>`;
+  }
+}
+
+function setView(mode) {
+  VIEW_MODE = mode;
+  updateViewBtns();
+  render();
+}
+function updateViewBtns() {
+  document.getElementById('btn-structured').classList.toggle('active', VIEW_MODE === 'structured');
+  document.getElementById('btn-full').classList.toggle('active', VIEW_MODE === 'full');
+}
+
+document.getElementById('search-input').addEventListener('input', render);
+
+function render() {
+  const cur = EVENTS.find(e => e.key === CURRENT_KEY);
+  const wrap = document.getElementById('ev-body');
+  if (!cur) return;
+
+  if (VIEW_MODE === 'full') {
+    wrap.innerHTML = `<div class="guide-content">${cur.html || '<p>ไม่มีข้อมูล</p>'}</div>`;
+    return;
+  }
+
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  const mobs = (cur.monsters || []).filter(m => {
+    if (!q) return true;
+    return (m.name + ' ' + (m.drops || []).map(d => d.name).join(' ') + ' ' + (m.zoneName || '')).toLowerCase().includes(q);
+  });
+
+  let html = '';
+  if (mobs.length) {
+    html += `<div class="count-bar"><span>มอนสเตอร์ &amp; บอสอีเวนต์ (${mobs.length})</span></div><div class="db-grid" style="margin-bottom:20px">`;
+    for (const m of mobs) {
+      const imgUrl = m.img ? `https://th.iruna-online.info/iruna/${m.img.replace(/^\/+/, '')}` : '';
+      html += `<div class="db-card">
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          ${imgUrl ? `<img src="${DB.esc(imgUrl)}" style="width:58px;height:58px;object-fit:contain;border-radius:6px;background:rgba(10,12,24,.7);padding:3px" loading="lazy" onerror="this.style.display='none'">` : ''}
+          <div style="flex:1;min-width:0">
+            <div class="db-card-title">
+              <span>${DB.esc(m.name)}</span>
+              ${m.lv ? `<span class="badge red">Lv.${DB.esc(m.lv)}</span>` : ''}
+            </div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+              ${m.attr ? `<span class="badge">ธาตุ: ${DB.esc(m.attr)}</span>` : ''}
+              ${m.weak ? `<span class="badge green">แพ้: ${DB.esc(m.weak)}</span>` : ''}
+              ${m.area ? `<span class="badge purple">${DB.esc(m.area)}</span>` : ''}
+            </div>
+            ${m.drops && m.drops.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px">${m.drops.map(d =>
+              `<a class="badge" style="text-decoration:none" href="javascript:void(0)" onclick="DB.openItemModal('${DB.esc(d.slug).replace(/'/g,"\\'")}', '${DB.esc(d.name).replace(/'/g,"\\'")}')">${DB.esc(d.name)}</a>`
+            ).join('')}</div>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  if (cur.quests && cur.quests.length) {
+    html += `<div class="db-panel"><h3 style="color:var(--gold-light);margin-bottom:10px">📜 เควสต์อีเวนต์ (${cur.quests.length})</h3><div class="db-grid">`;
+    for (const qe of cur.quests) {
+      html += `<div class="db-card">
+        <div class="db-card-title"><span>${DB.esc(qe.title)}</span></div>
+        ${qe.desc ? `<div style="font-size:13px;color:var(--text-dim);margin-bottom:5px">${DB.esc(qe.desc)}</div>` : ''}
+        ${qe.reward ? `<div style="font-size:12.5px"><strong>รางวัล:</strong> ${DB.esc(qe.reward)}</div>` : ''}
+        ${qe.npc ? `<div style="font-size:12.5px"><strong>NPC:</strong> ${DB.esc(qe.npc)}</div>` : ''}
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  if (!html) {
+    html = `<div class="guide-content">${cur.html || '<div class="empty-state">ไม่พบข้อมูล</div>'}</div>`;
+  }
+  wrap.innerHTML = html;
+}
+
+init();
+</script>
+</body>
+</html>
