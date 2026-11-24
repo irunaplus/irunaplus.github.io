@@ -366,6 +366,7 @@ async function resolveInheritedSkills(job, currentKey, visited = new Set()) {
     method: (typeof e === 'object' && e ? e.method : e) || '',
     lv: (typeof e === 'object' && e && e.lv != null && e.lv !== '') ? String(e.lv).trim() : '',
     loc: (typeof e === 'object' && e && e.loc) ? String(e.loc).trim() : '',
+    jobId: (typeof e === 'object' && e && e.jobId) ? e.jobId : '',
   });
 
   const mergeObtainLists = (parentList, childList) => {
@@ -388,6 +389,7 @@ async function resolveInheritedSkills(job, currentKey, visited = new Set()) {
             method: ce.method || pe.method,
             lv: ce.lv !== '' ? (isNaN(Number(ce.lv)) ? ce.lv : Number(ce.lv)) : (pe.lv !== '' ? (isNaN(Number(pe.lv)) ? pe.lv : Number(pe.lv)) : null),
             loc: ce.loc.length >= pe.loc.length ? ce.loc : pe.loc,
+            ...(ce.jobId || pe.jobId ? { jobId: ce.jobId || pe.jobId } : {}),
           };
           out[i] = merged;
         } else {
@@ -408,6 +410,9 @@ async function resolveInheritedSkills(job, currentKey, visited = new Set()) {
       if (dupIdx >= 0) {
         const pe = normEntry(out[dupIdx]);
         if (ce.loc.length > pe.loc.length) out[dupIdx] = rawEntry;
+        if (typeof rawEntry === 'object' && rawEntry && rawEntry.jobId) {
+          out[dupIdx] = { ...(typeof out[dupIdx] === 'object' && out[dupIdx] ? out[dupIdx] : {}), jobId: rawEntry.jobId };
+        }
         continue;
       }
       // Replace a trailing empty placeholder row (lv == '' && loc == '') of same method
@@ -620,18 +625,25 @@ function buildLevels(obtain, skillId, maxSkillLevel) {
     }
     const locInfo = renderLoc(locRaw);
     const skillLv = i + 1;   /* สกิล Lv (1-based) */
+    const rawJobId = typeof entry === 'object' && entry ? entry.jobId : '';
+    const jobKey = rawJobId
+      ? Object.keys(jobFilesMap).find(key => key.toLowerCase() === String(rawJobId).toLowerCase())
+      : '';
+    const jobLink = rowObtain === 'เปลี่ยนอาชีพ' && jobKey
+      ? ` &nbsp;·&nbsp; <a href="job.html?job=${encodeURIComponent(jobKey)}" target="_blank" rel="noopener">อาชีพ: ${jobFilesMap[jobKey].label}</a>`
+      : '';
     const clickableTypes = ['เควส', 'ไอเทมดรอป', 'ไอเทมซื้อร้านค้า'];
     const isClickable = clickableTypes.includes(rowObtain);
     if (isClickable) {
       const url = `obtain.html?skill=${encodeURIComponent(skillId)}&lv=${skillLv}&clv=${encodeURIComponent(charLv)}&type=${encodeURIComponent(rowObtain)}`;
       return `<a href="${url}" target="_blank" class="skill-lv-row clickable" title="คลิกเพื่อดูรายละเอียดวิธีการได้สกิลนี้">
         <span class="lv-badge">Lv.${skillLv}</span>
-        <span class="lv-loc">${lvText} &nbsp;·&nbsp; ${locInfo}</span>
+        <span class="lv-loc">${lvText} &nbsp;·&nbsp; ${locInfo}${jobLink}</span>
       </a>`;
     } else {
       return `<div class="skill-lv-row">
         <span class="lv-badge">Lv.${skillLv}</span>
-        <span class="lv-loc">${lvText} &nbsp;·&nbsp; ${locInfo}</span>
+        <span class="lv-loc">${lvText} &nbsp;·&nbsp; ${locInfo}${jobLink}</span>
       </div>`;
     }
   }).join('');

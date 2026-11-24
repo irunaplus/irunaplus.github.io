@@ -58,6 +58,11 @@
   }
   .obt-row-actions { display: flex; justify-content: flex-end; gap: 5px; }
   .obt-row-actions .icon-btn { width: 34px; min-height: 34px; padding: 5px; }
+  .obtain-job-link {
+    display: flex; align-items: center; gap: 8px; width: calc(100% - 63px); margin: -2px 0 8px 63px;
+    color: var(--text-dim); font-size: 12px;
+  }
+  .obtain-job-link .db-select { width: 360px; max-width: 100%; box-sizing: border-box; padding: 6px 8px; font-size: 12px; }
   .obt-add-btn {
     background: rgba(63,200,249,0.1); border: 1px solid rgba(63,200,249,0.35);
     color: var(--accent); border-radius: 6px; width: 34px; min-height: 34px;
@@ -88,6 +93,7 @@
     .obtain-row { grid-template-columns: 52px minmax(0, 1fr) 82px 74px; }
     .obtain-row .obt-loc { grid-column: 1 / -1; }
     .obtain-row .obt-detail-btn, .obtain-row .obt-detail-placeholder { grid-column: 2 / 4; }
+    .obtain-job-link { width: 100%; margin-left: 0; align-items: flex-start; flex-direction: column; }
   }
   @media (max-width: 780px) {
     .skill-editor-tools { top: 56px; }
@@ -420,7 +426,7 @@
 <div class="db-modal-backdrop" id="obtain-detail-modal">
   <div class="db-modal">
     <div class="db-modal-head">
-      <h3 id="od-title">📋 รายละเอียดวิธีทำสกิล</h3>
+      <h3 id="od-title">📋 วิธีทำสกิล</h3>
       <button class="db-modal-close" onclick="closeModal('obtain-detail-modal')">✕</button>
     </div>
     <div class="db-modal-body">
@@ -516,7 +522,7 @@
       <div class="obtain-preview" id="od-route-preview" style="display:none"></div>
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-        <button type="button" class="btn-primary-big" style="flex:1" id="od-save-btn" onclick="saveObtainDetail(false)">✅ บันทึกเงื่อนไขนี้</button>
+        <button type="button" class="btn-primary-big" style="flex:1" id="od-save-btn" onclick="saveObtainDetail(false)">✅ บันทึกวิธีทำสกิลนี้</button>
         <button type="button" class="db-btn" id="od-submit-direct-btn" style="display:none" onclick="saveObtainDetail(true)">📤 ส่งขออนุมัติทันที (GitHub)</button>
       </div>
     </div>
@@ -710,6 +716,7 @@ function mergeObtainLists(parentList, childList) {
     method: (typeof e === 'object' && e ? e.method : e) || '',
     lv: (typeof e === 'object' && e && e.lv != null && e.lv !== '') ? String(e.lv).trim() : '',
     loc: (typeof e === 'object' && e && e.loc) ? String(e.loc).trim() : '',
+    jobId: (typeof e === 'object' && e && e.jobId) ? e.jobId : '',
   });
   const out = (parentList || []).map(x => (typeof x === 'object' && x ? { ...x } : x));
   if (!childList || !childList.length) return out;
@@ -726,6 +733,7 @@ function mergeObtainLists(parentList, childList) {
           method: ce.method || pe.method,
           lv: ce.lv !== '' ? Number(ce.lv) : (pe.lv !== '' ? Number(pe.lv) : ''),
           loc: ce.loc.length >= pe.loc.length ? ce.loc : pe.loc,
+          ...(ce.jobId || pe.jobId ? { jobId: ce.jobId || pe.jobId } : {}),
         };
       } else {
         out.push({ ...childList[i] });
@@ -742,6 +750,9 @@ function mergeObtainLists(parentList, childList) {
     });
     if (dupIdx >= 0) {
       if (ce.loc.length > norm(out[dupIdx]).loc.length) out[dupIdx] = rawEntry;
+      if (typeof rawEntry === 'object' && rawEntry && rawEntry.jobId) {
+        out[dupIdx] = { ...(typeof out[dupIdx] === 'object' && out[dupIdx] ? out[dupIdx] : {}), jobId: rawEntry.jobId };
+      }
       continue;
     }
     const emptyIdx = out.findIndex(ex => {
@@ -1010,7 +1021,7 @@ async function onInheritChange() {
 
 function initializeEditorSkillRows() {
   const normalizeRows = rows => (rows || []).map(row => typeof row === 'object' && row
-    ? { method: row.method || 'เปลี่ยนอาชีพ', lv: row.lv ?? '', loc: row.loc || '' }
+    ? { method: row.method || 'เปลี่ยนอาชีพ', lv: row.lv ?? '', loc: row.loc || '', ...(row.jobId ? { jobId: row.jobId } : {}) }
     : { method: row || 'เปลี่ยนอาชีพ', lv: '', loc: '' });
   EDITOR_SKILL_ROWS = new Map();
   for (const [skillId, info] of INHERITED_SKILLS) {
@@ -1074,6 +1085,7 @@ function setEditorSkillRow(skillId, rowIndex, field, value) {
   const skill = EDITOR_SKILL_ROWS.get(skillId);
   if (!skill || !skill.obtain[rowIndex]) return;
   skill.obtain[rowIndex][field] = value;
+  if (field === 'method' && value !== 'เปลี่ยนอาชีพ') delete skill.obtain[rowIndex].jobId;
   ensureEditableJobSkill(skillId);
   if (field === 'method') renderEditorSkills();
   else updateJsonPreview();
@@ -1177,6 +1189,7 @@ function renderEditorSkills() {
         const odKey = folder ? `${folder}/${skillId}_${skillLvNum}.json` : '';
         const hasOd = odKey && Boolean(OBTAIN_DETAILS[odKey]);
         return `
+        <div>
         <div class="obtain-row">
           <span class="obt-lv-pill">Lv.${skillLvNum}</span>
           <select class="db-select" style="padding:7px 8px;font-size:13px" onchange="setEditorSkillRow('${DB.esc(skillId)}',${oi},'method',this.value)">
@@ -1184,11 +1197,18 @@ function renderEditorSkills() {
           </select>
           <input class="db-input" style="min-width:0;padding:7px 8px;font-size:13px" type="number" placeholder="Lv.ตัวละคร" value="${DB.esc(o.lv)}" oninput="setEditorSkillRow('${DB.esc(skillId)}',${oi},'lv',this.value ? Number(this.value) : '')">
           <input class="db-input obt-loc" style="min-width:0;padding:7px 10px;font-size:13px" type="text" placeholder="สถานที่ / NPC / ชื่อเควสต์ / ไอเทมดรอป" value="${DB.esc(o.loc)}" oninput="setEditorSkillRow('${DB.esc(skillId)}',${oi},'loc',this.value)">
-          ${folder ? `<button type="button" class="db-btn ${hasOd ? '' : 'secondary'} obt-detail-btn" style="padding:6px 9px;font-size:12px;white-space:nowrap" onclick="openObtainDetailModal('${DB.esc(skillId).replace(/'/g,"\\'")}', ${skillLvNum}, '${DB.esc(o.method)}', false)">${hasOd ? '✅ แก้เงื่อนไข' : '📋 กรอกเงื่อนไข'}</button>` : `<span class="obt-detail-placeholder"></span>`}
+          ${folder ? `<button type="button" class="db-btn ${hasOd ? '' : 'secondary'} obt-detail-btn" style="padding:6px 9px;font-size:12px;white-space:nowrap" onclick="openObtainDetailModal('${DB.esc(skillId).replace(/'/g,"\\'")}', ${skillLvNum}, '${DB.esc(o.method)}', false)">${hasOd ? '✅ แก้วิธีทำสกิล' : '📋 กรอกวิธีทำสกิล'}</button>` : `<span class="obt-detail-placeholder"></span>`}
           <div class="obt-row-actions">
             <button type="button" class="obt-add-btn" onclick="addObtainRow('${DB.esc(skillId)}',${oi})" title="เพิ่มเลเวลถัดจากบรรทัดนี้">＋</button>
             <button type="button" class="icon-btn" onclick="removeObtainRow('${DB.esc(skillId)}',${oi})" title="ลบแถวนี้">✕</button>
           </div>
+        </div>
+        ${o.method === 'เปลี่ยนอาชีพ' ? `<label class="obtain-job-link">ลิงก์หน้าอาชีพ
+          <select class="db-select" aria-label="เลือกอาชีพที่เกี่ยวข้องกับการได้สกิลเลเวล ${skillLvNum}" onchange="setEditorSkillRow('${DB.esc(skillId)}',${oi},'jobId',this.value)">
+            <option value="">ไม่ระบุลิงก์อาชีพ</option>
+            ${JOBS.map(job => `<option value="${DB.esc(job.key)}" ${o.jobId === job.key ? 'selected' : ''}>${DB.esc(job.label)}</option>`).join('')}
+          </select>
+        </label>` : ''}
         </div>`;
       }).join('')}
     </div>`;
@@ -1481,6 +1501,7 @@ function buildPayload() {
       method: o.method,
       lv: o.lv === '' ? 0 : Number(o.lv),
       loc: o.loc.trim(),
+      ...(o.jobId ? { jobId: o.jobId } : {}),
     }));
     const currentCap = Number.isInteger(editorState.maxSkillLevel) && editorState.maxSkillLevel > 0 ? editorState.maxSkillLevel : null;
     if (!original && !inherited) {
@@ -1494,6 +1515,7 @@ function buildPayload() {
       method: o.method || 'เปลี่ยนอาชีพ',
       lv: o.lv == null ? 0 : Number(o.lv),
       loc: (o.loc || '').trim(),
+      ...(o.jobId ? { jobId: o.jobId } : {}),
     }));
     if (JSON.stringify(obtainRows) !== JSON.stringify(originalRows)) {
       changed.obtain = obtainRows;
@@ -1576,6 +1598,7 @@ function buildCompleteJobData() {
           method: o.method,
           lv: o.lv === '' ? 0 : Number(o.lv),
           loc: o.loc.trim(),
+          ...(o.jobId ? { jobId: o.jobId } : {}),
         })),
       };
       if (INHERITED_SKILLS.has(s.skillId)) skill.replaceObtain = true;
@@ -1629,7 +1652,7 @@ async function openObtainDetailModal(skillId, skillLv, method, standalone) {
   OD_CTX = { skillId: skillId.toLowerCase(), skillLv, folder, method, file, key, standalone: Boolean(standalone) };
 
   const m = getSkillMeta(skillId);
-  document.getElementById('od-title').textContent = `📋 เงื่อนไขวิธีทำสกิล: ${m.name || skillId} Lv.${skillLv}`;
+  document.getElementById('od-title').textContent = `📋 วิธีทำสกิล: ${m.name || skillId} Lv.${skillLv}`;
   document.getElementById('od-meta-badges').innerHTML = `
     <span class="badge gold">${DB.esc(m.name || skillId)}</span>
     <span class="badge">สกิล Lv.${skillLv}</span>
@@ -1640,7 +1663,7 @@ async function openObtainDetailModal(skillId, skillLv, method, standalone) {
   document.getElementById('od-drop-fields').style.display = folder === 'drop' ? 'block' : 'none';
   document.getElementById('od-shop-fields').style.display = folder === 'shop' ? 'block' : 'none';
   document.getElementById('od-submit-direct-btn').style.display = standalone ? 'inline-flex' : 'none';
-  document.getElementById('od-save-btn').textContent = standalone ? '📋 คัดลอกส่ง Discord' : '✅ บันทึกแนบไปพร้อมฟอร์มอาชีพ';
+  document.getElementById('od-save-btn').textContent = standalone ? '📋 คัดลอกส่ง Discord' : '✅ บันทึกวิธีทำสกิลแนบไปพร้อมฟอร์มอาชีพ';
 
   // Load existing data (from unsaved draft first, else fetch existing JSON)
   let existing = OBTAIN_DETAILS[key]?.data || null;
@@ -1726,7 +1749,7 @@ function saveObtainDetail(submitDirectGitHub) {
   if (standalone) {
     const m = getSkillMeta(skillId);
     const payload = { type: 'obtain_patch', obtainDetails: buildObtainDetailChanges([entry]) };
-    const title = `[เสนอเงื่อนไขทำสกิล] ${m.name || skillId} Lv.${skillLv} (${method})`;
+    const title = `[เสนอวิธีทำสกิล] ${m.name || skillId} Lv.${skillLv} (${method})`;
     if (submitDirectGitHub) {
       if (!payload.obtainDetails.length) {
         showToast('ไม่มีข้อมูลเปลี่ยนแปลงจากรายการเดิม');
@@ -1736,11 +1759,11 @@ function saveObtainDetail(submitDirectGitHub) {
     } else {
       const md = buildContributionMarkdown(title, payload, [`วิธีได้รับ: ${method}`, `ไฟล์: data/obtain/${folder}/${file}`]);
       navigator.clipboard?.writeText(md).catch(() => {});
-      showToast('คัดลอกเงื่อนไขสกิลแล้ว! กำลังเปิด Discord...');
+      showToast('คัดลอกวิธีทำสกิลแล้ว! กำลังเปิด Discord...');
       window.open(DISCORD_INVITE_URL, '_blank', 'noopener');
     }
   } else {
-    showToast(`บันทึกเงื่อนไข ${getSkillMeta(skillId).name} Lv.${skillLv} แล้ว!`);
+    showToast(`บันทึกวิธีทำสกิล ${getSkillMeta(skillId).name} Lv.${skillLv} แล้ว!`);
   }
 }
 
@@ -1771,7 +1794,7 @@ function buildIssueMarkdown(payload = buildPayload()) {
     payload.job.skills?.length ? `แก้ข้อมูลเลเวล/วิธีได้สกิล ${payload.job.skills.length} รายการ` : '',
     payload.newSkills ? `เพิ่มสกิลใหม่ ${Object.keys(payload.newSkills).length} รายการ` : '',
     payload.skillPatches ? `แก้รายละเอียดสกิล ${Object.keys(payload.skillPatches).length} รายการ` : '',
-    payload.obtainDetails?.length ? `เพิ่ม/แก้เงื่อนไขวิธีได้สกิล ${payload.obtainDetails.length} รายการ` : '',
+    payload.obtainDetails?.length ? `เพิ่ม/แก้วิธีทำสกิล ${payload.obtainDetails.length} รายการ` : '',
     note ? `หมายเหตุ: ${note}` : '',
   ].filter(Boolean);
   return buildContributionMarkdown(title, payload, summaryLines);
