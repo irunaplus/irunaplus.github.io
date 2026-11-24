@@ -1,0 +1,10 @@
+{
+  "jobId": "apprentice_gladiator",
+  "name": "จอมดาบฝึกหัด",
+  "desc": "--",
+  "obtain": "เลเวล 120",
+  "inherits": [
+    "knight"
+  ],
+  "skills": []
+}
