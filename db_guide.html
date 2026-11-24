@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" type="image/png" href="https://iruna-online.com/img/fankit/Colon_orange.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>คู่มือ (Guides) | Iruna Online TH</title>
+<title>คู่มือ (Guides) | อิลูน่าพลัส</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="db_common.css">
 </head>
@@ -50,7 +50,7 @@ async function init() {
 
   const meta = GUIDE_LIST.find(g => g.key === PAGE_KEY) || GUIDE_LIST[0];
   document.getElementById('hero-title').textContent = meta.label;
-  document.title = meta.label + ' | Iruna Online TH';
+  document.title = meta.label + ' | อิลูน่าพลัส';
 
   try {
     const data = await DB.loadJSON(`data/db/guides/${meta.key}.json`);
