@@ -394,7 +394,7 @@ async function resolveInheritedSkills(job, currentKey, visited = new Set()) {
           out.push(typeof childList[i] === 'object' ? { ...childList[i] } : childList[i]);
         }
       }
-      return out;
+      return out.slice(0, childList.length);
     }
 
     // Lean format: childList only lists NEW levels gained in this job
