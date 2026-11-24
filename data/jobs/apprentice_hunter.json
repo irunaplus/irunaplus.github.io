@@ -2,7 +2,7 @@
   "jobId": "apprentice_hunter",
   "name": "นายพรานฝึกหัด",
   "desc": "ผู้ใช้ธนูเน้นความแม่นยำและการโจมตีระยะไกล",
-  "obtain": "เลเวล50เปลี่ยนอาชีพกับ เคอร์ดี ที่บ้านหัวหน้าเผ่า ในหมู่บ้านดีล <br> <a href='job?job=Warrior'>จำเป็นต้องเป็นนักรบก่อน</a>  <br> <a href='job?job=Warrior'>จำเป็นต้องมีดีเฟนLV.3</a>  <br> <a href='job?job=Warrior'>จำเป็นต้องมีแบทเทิลมาสตรีLV.3</a>",
+  "obtain": "เลเวล50เปลี่ยนอาชีพกับ เคอร์ดี ที่บ้านหัวหน้าเผ่า ในหมู่บ้านดีล <br> <a href='job?job=Warrior'>จำเป็นต้องเป็นนักรบก่อน</a>  <br>  <a href='obtain.html?skill=defend&lv=3&type=%E0%B9%84%E0%B8%AD%E0%B9%80%E0%B8%97%E0%B8%A1%E0%B8%94%E0%B8%A3%E0%B8%AD%E0%B8%9B'>จำเป็นต้องมีดีเฟนLV.3</a>  <br> <a href='obtain.html?skill=battle_mastery&lv=3&type=%E0%B9%80%E0%B8%84%E0%B8%A7%E0%B8%AA%E0%B8%95%E0%B9%8C'>จำเป็นต้องมีแบทเทิลมาสตรีLV.3</a>",
   "inherits": [
     "warrior"
   ],
