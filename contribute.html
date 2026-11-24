@@ -114,7 +114,7 @@
   <div class="steps-bar">
     <div class="step-card"><strong>1. เลือกอาชีพ &amp; กรอกฟอร์ม</strong>สกิลจากอาชีพก่อนหน้าจะสืบทอดมาให้อัตโนมัติ ไม่ต้องพิมพ์ซ้ำ</div>
     <div class="step-card"><strong>2. กดส่งคำขออนุมัติ</strong>ส่งผ่าน GitHub Issue (1 คลิก) หรือคัดลอกส่งใน Discord</div>
-    <div class="step-card"><strong>3. แอดมินอนุมัติขึ้นเว็บ</strong>แอดมินตรวจสอบแล้วพิมพ์ <code>/approve</code> ระบบอัปเดตหน้าเว็บให้อัตโนมัติ</div>
+    <div class="step-card"><strong>3. แอดมินตรวจสอบและอนุมัติ</strong>แอดมินจะตรวจสอบความถูกต้องก่อนอนุมัติขึ้นหน้าเว็บ</div>
   </div>
 
   <!-- Section 1: Job Selection & Basic Info -->
@@ -676,8 +676,6 @@ function buildIssueMarkdown() {
     '',
     `### ⚔️ รายการสกิลที่ส่ง (${payload.job.skills.length} สกิล${newSkillCount ? `, สกิลใหม่ ${newSkillCount} สกิล` : ''})`,
     skillSummary,
-    '',
-    `> **สำหรับแอดมิน:** หากตรวจสอบแล้วถูกต้อง ให้พิมพ์คอมเมนต์ \`/approve\` หรือติดป้าย \`approved\` ระบบจะอัปเดตขึ้นเว็บ **อิลูน่าพลัส** ให้อัตโนมัติทันที (หากไม่อนุมัติให้กด Close issue)`,
     '',
     '```json',
     JSON.stringify(payload, null, 2),
