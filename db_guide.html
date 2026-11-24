@@ -7,6 +7,49 @@
 <title>คู่มือ (Guides) | อิลูน่าพลัส</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="db_common.css">
+<style>
+  .bgm-player-bar {
+    position: sticky; top: 8px; z-index: 60;
+    background: rgba(14, 17, 32, 0.96); backdrop-filter: blur(10px);
+    border: 1px solid var(--gold); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+  }
+  .bgm-now {
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 10px;
+  }
+  .bgm-now-title { font-size: 15.5px; font-weight: 700; color: var(--gold-light); }
+  .bgm-audio { width: 100%; height: 40px; margin-bottom: 10px; border-radius: 8px; }
+  .bgm-controls { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+  .bgm-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px;
+  }
+  .bgm-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 11px 13px; border-radius: 9px;
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text); cursor: pointer; text-align: left; font-family: inherit;
+    transition: all .16s;
+  }
+  .bgm-item:hover { border-color: var(--accent); background: var(--card-hover); }
+  .bgm-item.playing {
+    background: rgba(212,168,67,0.16); border-color: var(--gold);
+    box-shadow: 0 0 16px rgba(212,168,67,0.18);
+  }
+  .bgm-num {
+    font-size: 11.5px; font-weight: 700; color: var(--gold);
+    background: rgba(212,168,67,0.12); border: 1px solid rgba(212,168,67,0.3);
+    padding: 2px 7px; border-radius: 5px; flex-shrink: 0;
+  }
+  .bgm-title { font-size: 13.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bgm-icon { font-size: 13px; color: var(--accent); flex-shrink: 0; }
+  .bgm-item.playing .bgm-icon { color: var(--gold-light); }
+  @media (max-width: 720px) {
+    .bgm-player-bar { padding-left: 14px; }
+    .bgm-grid { grid-template-columns: 1fr; }
+  }
+</style>
 </head>
 <body>
 <div id="stars"></div>
@@ -61,6 +104,8 @@ async function init() {
       renderSkills(data);
     } else if (meta.key === 'abilities2') {
       renderAbilities2(data);
+    } else if (meta.key === 'background_music' && data.tracks) {
+      renderBGM(data);
     } else {
       renderStaticGuide(data);
     }
@@ -194,6 +239,144 @@ function renderAbilities2(data) {
   }
   document.getElementById('ab-filter').addEventListener('input', applyAbFilter);
   showAbility(initAb);
+}
+
+function renderBGM(data) {
+  const tracks = data.tracks || [];
+  let curIdx = -1;
+  let isLoop = false;
+  let filtered = tracks;
+
+  document.getElementById('sub-toolbar').innerHTML = `
+    <div class="bgm-player-bar">
+      <div class="bgm-now">
+        <span class="bgm-now-title" id="bgm-now-title">🎵 คลิกเลือกเพลงด้านล่างเพื่อเริ่มเล่น (${tracks.length} เพลง)</span>
+        <span id="bgm-status" class="badge gold">พร้อมเล่น</span>
+      </div>
+      <audio id="bgm-audio" class="bgm-audio" controls preload="none"></audio>
+      <div class="bgm-controls">
+        <button type="button" class="db-btn secondary" onclick="bgmStep(-1)">⏮ ก่อนหน้า</button>
+        <button type="button" class="db-btn secondary" onclick="bgmStep(1)">⏭ ถัดไป</button>
+        <button type="button" class="db-btn secondary" id="bgm-loop-btn" onclick="bgmToggleLoop()">🔁 วนซ้ำ: ปิด</button>
+        <button type="button" class="db-btn secondary" onclick="bgmShuffle()">🔀 สุ่มเพลง</button>
+        <a class="db-btn" id="bgm-dl-link" href="#" target="_blank" rel="noopener" style="display:none">⬇️ เปิด/โหลดไฟล์ .ogg</a>
+      </div>
+      <div id="bgm-err" style="display:none;margin-top:8px;font-size:12.5px;color:var(--orange)"></div>
+    </div>
+    <div class="db-panel">
+      <div class="db-controls">
+        <input class="db-input" id="bgm-search" type="text" placeholder="🔍 ค้นหาเลขเพลง หรือชื่อแผนที่/บอส (เช่น ไบลูน, โซเฟีย, Sofya, Ferzen, 32)...">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-dim);cursor:pointer;white-space:nowrap">
+          <input type="checkbox" id="bgm-named-only" onchange="bgmRenderList()"> แสดงเฉพาะเพลงที่มีชื่อแผนที่/บอส
+        </label>
+      </div>
+    </div>`;
+
+  const audio = document.getElementById('bgm-audio');
+  const titleEl = document.getElementById('bgm-now-title');
+  const statusEl = document.getElementById('bgm-status');
+  const dlLink = document.getElementById('bgm-dl-link');
+  const errEl = document.getElementById('bgm-err');
+
+  audio.addEventListener('playing', () => {
+    statusEl.textContent = '▶ กำลังเล่น';
+    errEl.style.display = 'none';
+  });
+  audio.addEventListener('pause', () => {
+    if (!audio.ended) statusEl.textContent = '⏸ หยุดชั่วคราว';
+  });
+  audio.addEventListener('waiting', () => {
+    statusEl.textContent = '⏳ กำลังโหลดเสียง...';
+  });
+  audio.addEventListener('ended', () => {
+    if (isLoop) {
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+    } else {
+      bgmStep(1);
+    }
+  });
+  audio.addEventListener('error', () => {
+    statusEl.textContent = '⚠️ เล่นไม่ได้บนเบราว์เซอร์นี้';
+    errEl.style.display = 'block';
+    errEl.innerHTML = 'เบราว์เซอร์นี้อาจไม่รองรับไฟล์เสียง <code>.ogg</code> โดยตรง (เช่น Safari บน iOS) — แนะนำเปิดด้วย Chrome/Firefox หรือกดปุ่ม <strong>⬇️ เปิด/โหลดไฟล์ .ogg</strong> ด้านบนครับ';
+  });
+
+  window.bgmPlayById = function (id) {
+    const idx = tracks.findIndex(t => t.id === id);
+    if (idx < 0) return;
+    curIdx = idx;
+    const t = tracks[idx];
+    titleEl.textContent = `🎵 #${t.id} ${t.title}`;
+    statusEl.textContent = '⏳ กำลังโหลด...';
+    errEl.style.display = 'none';
+    dlLink.href = t.url;
+    dlLink.style.display = 'inline-flex';
+    audio.src = t.url;
+    audio.play().catch(() => {
+      statusEl.textContent = '▶ กดปุ่ม Play บนแถบเสียง';
+    });
+    document.querySelectorAll('.bgm-item').forEach(el => {
+      const active = Number(el.dataset.id) === t.id;
+      el.classList.toggle('playing', active);
+      const ic = el.querySelector('.bgm-icon');
+      if (ic) ic.textContent = active ? '🔊' : '▶';
+    });
+  };
+
+  window.bgmStep = function (delta) {
+    if (!filtered.length) return;
+    const curId = curIdx >= 0 ? tracks[curIdx].id : -1;
+    let fIdx = filtered.findIndex(t => t.id === curId);
+    if (fIdx < 0) fIdx = delta > 0 ? 0 : filtered.length - 1;
+    else fIdx = (fIdx + delta + filtered.length) % filtered.length;
+    bgmPlayById(filtered[fIdx].id);
+  };
+
+  window.bgmToggleLoop = function () {
+    isLoop = !isLoop;
+    audio.loop = isLoop;
+    const btn = document.getElementById('bgm-loop-btn');
+    btn.textContent = isLoop ? '🔁 วนซ้ำ: เปิด' : '🔁 วนซ้ำ: ปิด';
+    btn.classList.toggle('active', isLoop);
+  };
+
+  window.bgmShuffle = function () {
+    if (!filtered.length) return;
+    const pick = filtered[Math.floor(Math.random() * filtered.length)];
+    bgmPlayById(pick.id);
+  };
+
+  window.bgmRenderList = function () {
+    const q = (document.getElementById('bgm-search')?.value || '').trim().toLowerCase();
+    const namedOnly = document.getElementById('bgm-named-only')?.checked;
+    filtered = tracks.filter(t => {
+      if (namedOnly && t.title === 'เพลงประกอบ (Music)') return false;
+      if (q && !(String(t.id).includes(q) || t.title.toLowerCase().includes(q))) return false;
+      return true;
+    });
+    const curId = curIdx >= 0 ? tracks[curIdx].id : -1;
+    const body = document.getElementById('guide-body');
+    if (!filtered.length) {
+      body.innerHTML = `<div class="empty-state">ไม่พบเพลงที่ตรงกับคำค้นหา</div>`;
+      return;
+    }
+    body.innerHTML = `
+      <div class="count-bar"><span>แสดง ${filtered.length} จาก ${tracks.length} เพลง</span><span>💡 กดเลือกเพลงเพื่อฟังได้ทันที</span></div>
+      <div class="bgm-grid">
+        ${filtered.map(t => {
+          const isPlaying = t.id === curId;
+          return `<button type="button" class="bgm-item ${isPlaying ? 'playing' : ''}" data-id="${t.id}" onclick="bgmPlayById(${t.id})">
+            <span class="bgm-num">#${t.id}</span>
+            <span class="bgm-title" title="${DB.esc(t.title)}">${DB.esc(t.title)}</span>
+            <span class="bgm-icon">${isPlaying ? '🔊' : '▶'}</span>
+          </button>`;
+        }).join('')}
+      </div>`;
+  };
+
+  document.getElementById('bgm-search').addEventListener('input', bgmRenderList);
+  bgmRenderList();
 }
 
 init();

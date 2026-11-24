@@ -183,6 +183,8 @@ def rewrite_href(href: str) -> str:
         return raw
     if raw.startswith("/iruna/"):
         raw = raw[len("/iruna/"):]
+    if raw.startswith("bgm/"):
+        return BASE_URL + raw
     if raw.startswith("item/"):
         return f"db_items.html?item={urllib.parse.quote(raw[5:])}"
     if raw.startswith("monster/"):
