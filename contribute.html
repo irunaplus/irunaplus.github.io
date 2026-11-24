@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="https://iruna-online.com/img/fankit/Colon_orange.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ช่วยเพิ่ม/แก้ไขข้อมูลอาชีพ | อิลูน่าพลัส</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="db_common.css">
+<style>
+  .steps-bar {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px;
+  }
+  @media (max-width: 720px) { .steps-bar { grid-template-columns: 1fr; } }
+  .step-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; font-size: 13px; color: var(--text-dim);
+  }
+  .step-card strong { display: block; color: var(--gold-light); font-size: 13.5px; margin-bottom: 3px; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+  .field label { font-size: 12.5px; color: var(--gold-light); font-weight: 600; }
+  .field textarea {
+    background: rgba(12, 16, 30, 0.9); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: 'Noto Sans Thai', sans-serif; font-size: 13.5px;
+    padding: 9px 12px; min-height: 70px; resize: vertical; outline: none;
+  }
+  .field textarea:focus { border-color: var(--accent); }
+
+  .inh-box {
+    background: rgba(15, 23, 42, 0.65); border: 1px dashed rgba(63,200,249,0.4);
+    border-radius: 10px; padding: 14px; margin-bottom: 18px;
+  }
+  .inh-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .inh-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 10px; border-radius: 8px;
+    background: rgba(24,31,52,0.9); border: 1px solid var(--border);
+    font-size: 12.5px; color: var(--text);
+  }
+  .inh-add-btn {
+    padding: 2px 8px; border-radius: 5px; font-size: 11.5px; font-weight: 600;
+    background: rgba(212,168,67,0.16); border: 1px solid var(--border-gold);
+    color: var(--gold-light); cursor: pointer; font-family: inherit;
+  }
+  .inh-add-btn:hover { background: rgba(212,168,67,0.32); }
+
+  .sk-editor-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; margin-bottom: 14px;
+  }
+  .sk-editor-head {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    flex-wrap: wrap; margin-bottom: 10px; padding-bottom: 8px;
+    border-bottom: 1px solid rgba(65,82,118,0.4);
+  }
+  .obtain-row {
+    display: grid; grid-template-columns: 155px 95px 1fr 36px; gap: 8px;
+    align-items: center; margin-bottom: 8px;
+  }
+  @media (max-width: 720px) {
+    .obtain-row { grid-template-columns: 1fr 1fr; }
+    .obtain-row .obt-loc { grid-column: 1 / -1; }
+  }
+  .icon-btn {
+    background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.35);
+    color: #fca5a5; border-radius: 6px; padding: 6px 8px; cursor: pointer;
+    font-size: 13px; font-family: inherit;
+  }
+  .icon-btn:hover { background: rgba(248,113,113,0.28); }
+
+  .picker-modal-list {
+    max-height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;
+    margin-top: 10px;
+  }
+  .picker-row {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    padding: 9px 12px; border-radius: 8px; cursor: pointer;
+    background: var(--card); border: 1px solid var(--border);
+  }
+  .picker-row:hover { border-color: var(--accent); background: var(--card-hover); }
+
+  .type-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .submit-bar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px;
+  }
+  .btn-primary-big {
+    padding: 11px 20px; border-radius: 9px; font-size: 14.5px; font-weight: 700;
+    background: linear-gradient(135deg, #d4a843, #b88725);
+    border: none; color: #0a0812; cursor: pointer; font-family: inherit;
+    transition: filter .15s, transform .12s;
+  }
+  .btn-primary-big:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  .toast {
+    position: fixed; bottom: 22px; right: 22px; z-index: 3000;
+    background: #14221a; border: 1px solid #77d77b; color: #b7f5bb;
+    padding: 10px 16px; border-radius: 9px; font-size: 13.5px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6); display: none;
+  }
+</style>
+</head>
+<body>
+<div id="stars"></div>
+<div id="sb-root"></div>
+
+<div class="hero">
+  <h1 class="hero-title">📝 ช่วยเพิ่ม / แก้ไขข้อมูลอาชีพ</h1>
+  <p class="hero-desc">กรอกข้อมูลง่ายๆ ผ่านแบบฟอร์ม ไม่ต้องเขียนโค้ด JSON — ส่งให้แอดมินตรวจสอบและอนุมัติขึ้นเว็บอัตโนมัติ</p>
+</div>
+
+<div class="main-wrapper">
+  <div class="steps-bar">
+    <div class="step-card"><strong>1. เลือกอาชีพ &amp; กรอกฟอร์ม</strong>สกิลจากอาชีพก่อนหน้าจะสืบทอดมาให้อัตโนมัติ ไม่ต้องพิมพ์ซ้ำ</div>
+    <div class="step-card"><strong>2. กดส่งคำขออนุมัติ</strong>ส่งผ่าน GitHub Issue (1 คลิก) หรือคัดลอกส่งใน Discord</div>
+    <div class="step-card"><strong>3. แอดมินอนุมัติขึ้นเว็บ</strong>แอดมินตรวจสอบแล้วพิมพ์ <code>/approve</code> ระบบอัปเดตหน้าเว็บให้อัตโนมัติ</div>
+  </div>
+
+  <!-- Section 1: Job Selection & Basic Info -->
+  <div class="db-panel">
+    <h3 style="color:var(--gold-light);margin-bottom:12px;font-size:16px">1. ข้อมูลพื้นฐานอาชีพ</h3>
+    <div class="form-grid">
+      <div class="field">
+        <label for="job-select">เลือกอาชีพที่ต้องการเพิ่ม / แก้ไข</label>
+        <select class="db-select" id="job-select" onchange="loadSelectedJob(this.value)"></select>
+      </div>
+      <div class="field">
+        <label for="inherit-select">สืบทอดสกิลจากอาชีพก่อนหน้า (Inherits — ไม่ต้องพิมพ์สกิลซ้ำ!)</label>
+        <select class="db-select" id="inherit-select" onchange="onInheritChange()"></select>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label for="job-name">ชื่ออาชีพ (ภาษาไทย)</label>
+        <input class="db-input" id="job-name" type="text" placeholder="เช่น พาลาดิน">
+      </div>
+      <div class="field">
+        <label for="job-desc">คำอธิบายอาชีพสั้นๆ</label>
+        <input class="db-input" id="job-desc" type="text" placeholder="เช่น อัศวินศักดิ์สิทธิ์แนวหน้า เน้นป้องกันและปกป้องปาร์ตี้">
+      </div>
+    </div>
+    <div class="field">
+      <label for="job-obtain">วิธีเปลี่ยนอาชีพ (เลเวล / NPC / สถานที่)</label>
+      <textarea id="job-obtain" placeholder="เช่น เลเวล 140 เปลี่ยนอาชีพกับ NPC ... ที่เมือง ..."></textarea>
+    </div>
+  </div>
+
+  <!-- Section 2: Auto-Inherited Skills Preview -->
+  <div class="inh-box" id="inh-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div>
+        <strong style="color:var(--accent);font-size:14.5px">🔗 สกิลที่สืบทอดมาอัตโนมัติ (ไม่ต้องพิมพ์ซ้ำ!)</strong>
+        <div style="font-size:12.5px;color:var(--text-dim)" id="inh-summary">เลือกอาชีพก่อนหน้าด้านบนเพื่อสืบทอดสกิลอัตโนมัติ</div>
+      </div>
+      <button type="button" class="db-btn secondary" onclick="autoCleanDuplicates()" title="ตัดสกิลและเลเวลที่ซ้ำกับอาชีพแม่ออกให้เหลือเฉพาะของใหม่">🧹 ลบสกิล/เลเวลซ้ำกับอาชีพแม่</button>
+    </div>
+    <div class="inh-list" id="inh-list"></div>
+  </div>
+
+  <!-- Section 3: Job-specific Skills Editor -->
+  <div class="db-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div>
+        <h3 style="color:var(--gold-light);font-size:16px">2. สกิลเฉพาะของอาชีพนี้ (หรือเลเวลอัปเกรดใหม่)</h3>
+        <div style="font-size:12.5px;color:var(--text-dim)">เพิ่มเฉพาะสกิลใหม่ หรือเลเวลใหม่ที่เพิ่งได้ในอาชีพนี้</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="db-btn" onclick="openSkillPicker()">🔍 + เลือกสกิลที่มีอยู่แล้ว</button>
+        <button type="button" class="db-btn secondary" onclick="openNewSkillModal()">✨ + สร้างสกิลใหม่</button>
+      </div>
+    </div>
+    <div id="skills-editor-list"></div>
+  </div>
+
+  <!-- Section 4: Submit for Approval -->
+  <div class="db-panel">
+    <h3 style="color:var(--gold-light);margin-bottom:12px;font-size:16px">3. ส่งข้อมูลให้แอดมินตรวจสอบและอนุมัติ</h3>
+    <div class="form-grid">
+      <div class="field">
+        <label for="contrib-name">ชื่อผู้ส่งข้อมูล / เครดิต (ไม่บังคับ)</label>
+        <input class="db-input" id="contrib-name" type="text" placeholder="เช่น ชื่อในเกม หรือชื่อ Discord">
+      </div>
+      <div class="field">
+        <label for="contrib-note">หมายเหตุถึงแอดมิน (ไม่บังคับ)</label>
+        <input class="db-input" id="contrib-note" type="text" placeholder="เช่น เพิ่มสกิลพาลาดินครบถึง Lv.300 แล้ว">
+      </div>
+    </div>
+    <div class="submit-bar">
+      <button type="button" class="btn-primary-big" onclick="submitViaGitHub()">📤 ส่งคำขออนุมัติผ่าน GitHub (แนะนำ)</button>
+      <button type="button" class="db-btn" onclick="copyForDiscord()">📋 คัดลอกส่งใน Discord</button>
+      <button type="button" class="db-btn secondary" onclick="downloadJson()">💾 ดาวน์โหลด JSON</button>
+      <button type="button" class="db-btn secondary" onclick="toggleJsonPreview()">👁️ ดูตัวอย่าง JSON</button>
+    </div>
+    <div id="json-preview-wrap" style="display:none;margin-top:12px">
+      <pre id="json-preview" style="background:rgba(10,12,24,0.92);border:1px solid var(--border);border-radius:8px;padding:12px;overflow:auto;max-height:360px;font-size:12px;color:#93c5fd"></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Skill Picker Modal -->
+<div class="db-modal-backdrop" id="skill-picker-modal">
+  <div class="db-modal">
+    <div class="db-modal-head">
+      <h3>🔍 เลือกสกิลที่มีอยู่แล้วในระบบ</h3>
+      <button class="db-modal-close" onclick="closeModal('skill-picker-modal')">✕</button>
+    </div>
+    <div class="db-modal-body">
+      <input class="db-input" id="picker-search" type="text" placeholder="พิมพ์ชื่อสกิลไทย หรือ skillId..." style="width:100%" oninput="renderSkillPicker()">
+      <div class="picker-modal-list" id="picker-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- New Skill Modal -->
+<div class="db-modal-backdrop" id="new-skill-modal">
+  <div class="db-modal">
+    <div class="db-modal-head">
+      <h3>✨ สร้างสกิลใหม่เข้าฐานข้อมูล</h3>
+      <button class="db-modal-close" onclick="closeModal('new-skill-modal')">✕</button>
+    </div>
+    <div class="db-modal-body">
+      <div class="field">
+        <label>ชื่อสกิล (ภาษาไทย) *</label>
+        <input class="db-input" id="ns-name" type="text" placeholder="เช่น การ์เดียน">
+      </div>
+      <div class="field">
+        <label>รหัสสกิลภาษาอังกฤษ (skillId) * — ตัวพิมพ์เล็กกับ _</label>
+        <input class="db-input" id="ns-id" type="text" placeholder="เช่น guardian (ไม่เว้นวรรค)">
+      </div>
+      <div class="field">
+        <label>ประเภทสกิล (เลือกได้หลายข้อ)</label>
+        <div class="type-chip-row" id="ns-types">
+          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลกดใช้</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลติดตัว</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลโจมตีเดี่ยว</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลโจมตีหมู่</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลบัพ(ใช้ได้กับแค่ตัวเอง)</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลบัพ(ปาร์ตี้)</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('active')">ดีบัฟ</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('active')">ฮีล</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลอัญเชิญ</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลพิเศษ</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>คำอธิบายสกิล / สูตร / การใช้ MP</label>
+        <textarea id="ns-desc" placeholder="อธิบายผลของสกิล ค่า MP ที่ใช้ ระยะเวลา ฯลฯ"></textarea>
+      </div>
+      <button type="button" class="btn-primary-big" style="width:100%" onclick="saveNewSkill()">✅ เพิ่มสกิลนี้ลงในอาชีพ</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="db_common.js"></script>
+<script>
+DB.initSidebar();
+
+const GITHUB_REPO = 'irunaplus/irunaplus.github.io';
+
+const JOBS = [
+  { key: 'apprentice_warrior', file: 'apprentice_warrior.json', label: 'นักรบฝึกหัด', defaultParent: '' },
+  { key: 'warrior', file: 'warrior.json', label: 'นักรบ', defaultParent: 'apprentice_warrior' },
+  { key: 'apprentice_knight', file: 'apprentice_knight.json', label: 'อัศวินฝึกหัด', defaultParent: 'warrior' },
+  { key: 'knight', file: 'knight.json', label: 'อัศวิน', defaultParent: 'apprentice_knight' },
+  { key: 'apprentice_paladin', file: 'apprentice_paladin.json', label: 'พาลาดินฝึกหัด', defaultParent: 'knight' },
+  { key: 'paladin', file: 'paladin.json', label: 'พาลาดิน', defaultParent: 'apprentice_paladin' },
+  { key: 'apprentice_gladiator', file: 'apprentice_gladiator.json', label: 'จอมดาบฝึกหัด', defaultParent: 'knight' },
+  { key: 'gladiator', file: 'gladiator.json', label: 'จอมดาบ', defaultParent: 'apprentice_gladiator' },
+  { key: 'apprentice_beastknight', file: 'apprentice_beastknight.json', label: 'บีทไนท์ฝึกหัด', defaultParent: 'knight' },
+  { key: 'beastknight', file: 'beastk_night.json', label: 'บีทไนท์', defaultParent: 'apprentice_beastknight' },
+
+  { key: 'apprentice_hunter', file: 'apprentice_hunter.json', label: 'นายพรานฝึกหัด', defaultParent: 'warrior' },
+  { key: 'hunter', file: 'hunter.json', label: 'นายพราน', defaultParent: 'apprentice_hunter' },
+  { key: 'apprentice_assassin', file: 'apprentice_assassin.json', label: 'นักฆ่าฝึกหัด', defaultParent: 'hunter' },
+  { key: 'assassin', file: 'assassin.json', label: 'นักฆ่า', defaultParent: 'apprentice_assassin' },
+  { key: 'apprentice_sniper', file: 'apprentice_sniper.json', label: 'นักแม่นฝึกหัด', defaultParent: 'hunter' },
+  { key: 'sniper', file: 'sniper.json', label: 'นักแม่นธนู', defaultParent: 'apprentice_sniper' },
+  { key: 'apprentice_summoner', file: 'apprentice_summoner.json', label: 'ซัมมอนเนอร์ฝึกหัด', defaultParent: 'hunter' },
+  { key: 'summoner', file: 'summoner.json', label: 'ซัมมอนเนอร์', defaultParent: 'apprentice_summoner' },
+
+  { key: 'apprentice_mage', file: 'apprentice_mage.json', label: 'นักเวทย์ฝึกหัด', defaultParent: '' },
+  { key: 'mage', file: 'mage.json', label: 'นักเวทย์', defaultParent: 'apprentice_mage' },
+  { key: 'apprentice_wizard', file: 'apprentice_wizard.json', label: 'จอมเวทย์ฝึกหัด', defaultParent: 'mage' },
+  { key: 'wizard', file: 'wizard.json', label: 'จอมเวทย์', defaultParent: 'apprentice_wizard' },
+  { key: 'apprentice_highwizard', file: 'apprentice_highwizard.json', label: 'จอมขมังเวทย์ฝึกหัด', defaultParent: 'wizard' },
+  { key: 'highwizard', file: 'highwizard.json', label: 'จอมขมังเวทย์', defaultParent: 'apprentice_highwizard' },
+  { key: 'apprentice_enchanter', file: 'apprentice_enchanter.json', label: 'ผู้วิเศษฝึกหัด', defaultParent: 'wizard' },
+  { key: 'enchanter', file: 'enchanter.json', label: 'ผู้วิเศษ', defaultParent: 'apprentice_enchanter' },
+  { key: 'apprentice_necromancer', file: 'apprentice_necromancer.json', label: 'เนโครแมนเซอร์ฝึกหัด', defaultParent: 'wizard' },
+  { key: 'necromancer', file: 'necromancer.json', label: 'เนโครแมนเซอร์', defaultParent: 'apprentice_necromancer' },
+
+  { key: 'apprentice_cleric', file: 'apprentice_cleric.json', label: 'บาทหลวงฝึกหัด', defaultParent: 'mage' },
+  { key: 'cleric', file: 'cleric.json', label: 'บาทหลวง', defaultParent: 'apprentice_cleric' },
+  { key: 'apprentice_bishop', file: 'apprentice_bishop.json', label: 'สังฆราชฝึกหัด', defaultParent: 'cleric' },
+  { key: 'bishop', file: 'bishop.json', label: 'สังฆราช', defaultParent: 'apprentice_bishop' },
+  { key: 'apprentice_monk', file: 'apprentice_monk.json', label: 'นักพรตฝึกหัด', defaultParent: 'cleric' },
+  { key: 'monk', file: 'monk.json', label: 'นักพรต', defaultParent: 'apprentice_monk' },
+  { key: 'apprentice_servant', file: 'apprentice_servant.json', label: 'เซอร์แวนฝึกหัด', defaultParent: 'cleric' },
+  { key: 'servant', file: 'servant.json', label: 'เซอร์แวนท์', defaultParent: 'apprentice_servant' },
+
+  { key: 'ninja', file: 'ninja.json', label: 'นินจา', defaultParent: '' },
+  { key: 'samurai', file: 'samurai.json', label: 'ซามูไร', defaultParent: '' },
+  { key: 'minstrel', file: 'minstrel.json', label: 'นักดนตรี', defaultParent: '' },
+  { key: 'alchemist', file: 'alchemist.json', label: 'นักเล่นแร่แปรธาตุ', defaultParent: '' },
+];
+
+const OBTAIN_METHODS = ['เปลี่ยนอาชีพ', 'เควสต์', 'ไอเทมดรอป', 'ไอเทมซื้อร้านค้า'];
+
+let SKILLS_MASTER = {};
+let NEW_SKILLS = {};
+let JOB_CACHE = {};
+let CURRENT_JOB_KEY = '';
+let INHERITED_SKILLS = new Map(); // skillId -> { obtain: [...], from: label }
+let EDITOR_SKILLS = []; // [{ skillId, obtain: [{ method, lv, loc }] }]
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(() => { el.style.display = 'none'; }, 3200);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+async function fetchJobByKey(key) {
+  const norm = String(key || '').toLowerCase();
+  const meta = JOBS.find(j => j.key === norm);
+  if (!meta) return null;
+  if (JOB_CACHE[norm] !== undefined) return JOB_CACHE[norm];
+  try {
+    const r = await fetch('./data/jobs/' + meta.file);
+    if (r.ok) {
+      const d = await r.json();
+      JOB_CACHE[norm] = d;
+      return d;
+    }
+  } catch (_) {}
+  JOB_CACHE[norm] = null;
+  return null;
+}
+
+async function resolveParentChain(parentKey, visited = new Set()) {
+  const map = new Map();
+  if (!parentKey) return map;
+  const norm = String(parentKey).toLowerCase();
+  if (visited.has(norm)) return map;
+  visited.add(norm);
+
+  const meta = JOBS.find(j => j.key === norm);
+  const pJob = await fetchJobByKey(norm);
+  if (!pJob) return map;
+
+  const parents = Array.isArray(pJob.inherits) ? pJob.inherits : (pJob.inherits ? [pJob.inherits] : []);
+  for (const gp of parents) {
+    const gpMap = await resolveParentChain(gp, visited);
+    for (const [sid, info] of gpMap.entries()) {
+      map.set(sid, { obtain: [...info.obtain], from: info.from });
+    }
+  }
+
+  const label = pJob.name || (meta ? meta.label : norm);
+  for (const s of (pJob.skills || [])) {
+    if (!s.skillId) continue;
+    if (!map.has(s.skillId)) {
+      map.set(s.skillId, { obtain: [...(s.obtain || [])], from: label });
+    } else {
+      const cur = map.get(s.skillId);
+      for (const e of (s.obtain || [])) {
+        const dup = cur.obtain.some(x => x.method === e.method && String(x.lv) === String(e.lv));
+        if (!dup) cur.obtain.push(e);
+      }
+    }
+  }
+  return map;
+}
+
+function getSkillMeta(skillId) {
+  return NEW_SKILLS[skillId] || SKILLS_MASTER[skillId] || { name: skillId, type: [], desc: '' };
+}
+
+async function init() {
+  try {
+    const r = await fetch('./data/skills.json');
+    if (r.ok) SKILLS_MASTER = await r.json();
+  } catch (_) {}
+
+  const jobSel = document.getElementById('job-select');
+  jobSel.innerHTML = JOBS.map(j => `<option value="${j.key}">${j.label} (${j.key})</option>`).join('');
+
+  const inhSel = document.getElementById('inherit-select');
+  inhSel.innerHTML = `<option value="">— ไม่สืบทอด (อาชีพระดับเริ่มต้น / สายพิเศษ) —</option>` +
+    JOBS.map(j => `<option value="${j.key}">สืบทอดจาก: ${j.label} (${j.key})</option>`).join('');
+
+  const qJob = (DB.qs('job') || 'paladin').toLowerCase();
+  const matched = JOBS.find(j => j.key === qJob) || JOBS.find(j => j.key === 'paladin') || JOBS[0];
+  jobSel.value = matched.key;
+  await loadSelectedJob(matched.key);
+}
+
+async function loadSelectedJob(key) {
+  CURRENT_JOB_KEY = key;
+  const meta = JOBS.find(j => j.key === key);
+  const data = await fetchJobByKey(key);
+
+  document.getElementById('job-name').value = (data && data.name) || meta.label;
+  document.getElementById('job-desc').value = (data && data.desc) || '';
+  document.getElementById('job-obtain').value = (data && data.obtain) || '';
+
+  const parentVal = (data && data.inherits && data.inherits[0])
+    ? String(data.inherits[0]).toLowerCase()
+    : (meta.defaultParent || '');
+  document.getElementById('inherit-select').value = JOBS.some(j => j.key === parentVal) ? parentVal : '';
+
+  EDITOR_SKILLS = ((data && data.skills) || []).map(s => ({
+    skillId: s.skillId,
+    obtain: (s.obtain || []).map(o => ({
+      method: o.method || 'เปลี่ยนอาชีพ',
+      lv: o.lv != null ? o.lv : '',
+      loc: o.loc || '',
+    })),
+  }));
+
+  await refreshInherited();
+  renderEditorSkills();
+}
+
+async function onInheritChange() {
+  await refreshInherited();
+  renderEditorSkills();
+}
+
+async function refreshInherited() {
+  const parentKey = document.getElementById('inherit-select').value;
+  INHERITED_SKILLS = await resolveParentChain(parentKey, new Set([CURRENT_JOB_KEY]));
+  const sumEl = document.getElementById('inh-summary');
+  const listEl = document.getElementById('inh-list');
+
+  if (!parentKey) {
+    sumEl.textContent = 'อาชีพนี้ไม่ได้สืบทอดสกิลจากอาชีพอื่น';
+    listEl.innerHTML = '';
+    return;
+  }
+  const pMeta = JOBS.find(j => j.key === parentKey);
+  if (INHERITED_SKILLS.size === 0) {
+    sumEl.textContent = `ตั้งค่าสืบทอดจาก "${pMeta ? pMeta.label : parentKey}" แล้ว (อาชีพก่อนหน้ายังไม่มีข้อมูลสกิลในระบบ)`;
+    listEl.innerHTML = '';
+    return;
+  }
+
+  sumEl.textContent = `สืบทอดสกิลอัตโนมัติทั้งหมด ${INHERITED_SKILLS.size} สกิล จากสาย "${pMeta ? pMeta.label : parentKey}" — คุณไม่ต้องพิมพ์สกิลเหล่านี้ซ้ำ! หากอาชีพนี้มีเลเวลใหม่ของสกิลเดิม กดปุ่ม "+ เพิ่มเลเวลใหม่" ได้เลย`;
+  listEl.innerHTML = Array.from(INHERITED_SKILLS.entries()).map(([sid, info]) => {
+    const m = getSkillMeta(sid);
+    return `<div class="inh-chip">
+      <span>${DB.esc(m.name)} <span style="color:var(--text-dim);font-size:11.5px">(เดิม ${info.obtain.length} Lv)</span></span>
+      <button type="button" class="inh-add-btn" onclick="addUpgradeForInherited('${DB.esc(sid).replace(/'/g,"\\'")}')">+ เพิ่มเลเวลใหม่</button>
+    </div>`;
+  }).join('');
+}
+
+function addUpgradeForInherited(skillId) {
+  let existing = EDITOR_SKILLS.find(s => s.skillId === skillId);
+  if (!existing) {
+    existing = { skillId, obtain: [{ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' }] };
+    EDITOR_SKILLS.push(existing);
+  } else {
+    existing.obtain.push({ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' });
+  }
+  renderEditorSkills();
+  showToast('เพิ่มช่องเลเวลใหม่สำหรับสกิล ' + getSkillMeta(skillId).name + ' แล้ว');
+}
+
+function autoCleanDuplicates() {
+  if (INHERITED_SKILLS.size === 0) {
+    showToast('ยังไม่มีสกิลสืบทอดให้เปรียบเทียบ');
+    return;
+  }
+  let removed = 0;
+  const cleaned = [];
+  for (const s of EDITOR_SKILLS) {
+    const inh = INHERITED_SKILLS.get(s.skillId);
+    if (!inh) {
+      cleaned.push(s);
+      continue;
+    }
+    const newObt = s.obtain.filter(e => {
+      const isDup = inh.obtain.some(ie => ie.method === e.method && String(ie.lv) === String(e.lv));
+      if (isDup) removed++;
+      return !isDup;
+    });
+    if (newObt.length > 0) cleaned.push({ skillId: s.skillId, obtain: newObt });
+  }
+  EDITOR_SKILLS = cleaned;
+  renderEditorSkills();
+  showToast(removed > 0 ? `ตัดรายการซ้ำกับอาชีพแม่ออก ${removed} แถวเรียบร้อย!` : 'ไม่มีรายการซ้ำกับอาชีพแม่แล้ว');
+}
+
+function renderEditorSkills() {
+  const wrap = document.getElementById('skills-editor-list');
+  if (!EDITOR_SKILLS.length) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:26px">
+      ยังไม่มีสกิลเฉพาะของอาชีพนี้ — กด <strong>🔍 + เลือกสกิลที่มีอยู่แล้ว</strong> หรือ <strong>✨ + สร้างสกิลใหม่</strong> ด้านบนได้เลย
+    </div>`;
+    updateJsonPreview();
+    return;
+  }
+
+  wrap.innerHTML = EDITOR_SKILLS.map((s, si) => {
+    const m = getSkillMeta(s.skillId);
+    const isInh = INHERITED_SKILLS.has(s.skillId);
+    const isNew = Boolean(NEW_SKILLS[s.skillId]);
+    return `<div class="sk-editor-card">
+      <div class="sk-editor-head">
+        <div>
+          <strong style="color:var(--gold-light);font-size:15px">${DB.esc(m.name)}</strong>
+          <span class="badge" style="margin-left:6px">${DB.esc(s.skillId)}</span>
+          ${isInh ? `<span class="badge purple" style="margin-left:4px">อัปเกรดต่อจากสกิลสืบทอด</span>` : ''}
+          ${isNew ? `<span class="badge green" style="margin-left:4px">สกิลใหม่</span>` : ''}
+        </div>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="db-btn secondary" style="padding:4px 10px;font-size:12px" onclick="addObtainRow(${si})">+ เพิ่มเลเวล</button>
+          <button type="button" class="icon-btn" onclick="removeSkill(${si})" title="ลบสกิลนี้">🗑️ ลบ</button>
+        </div>
+      </div>
+      ${m.desc ? `<div style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">${m.desc.replace(/<br\s*\/?>/gi, ' · ').replace(/<[^>]+>/g, '')}</div>` : ''}
+      ${s.obtain.map((o, oi) => `
+        <div class="obtain-row">
+          <select class="db-select" style="padding:7px 8px;font-size:13px" onchange="EDITOR_SKILLS[${si}].obtain[${oi}].method=this.value; updateJsonPreview()">
+            ${OBTAIN_METHODS.map(mt => `<option value="${mt}" ${o.method === mt ? 'selected' : ''}>${mt}</option>`).join('')}
+          </select>
+          <input class="db-input" style="min-width:0;padding:7px 8px;font-size:13px" type="number" placeholder="Lv.ตัวละคร" value="${DB.esc(o.lv)}" oninput="EDITOR_SKILLS[${si}].obtain[${oi}].lv=this.value ? Number(this.value) : ''; updateJsonPreview()">
+          <input class="db-input obt-loc" style="min-width:0;padding:7px 10px;font-size:13px" type="text" placeholder="สถานที่ / NPC / ชื่อเควสต์ / ไอเทมดรอป" value="${DB.esc(o.loc)}" oninput="EDITOR_SKILLS[${si}].obtain[${oi}].loc=this.value; updateJsonPreview()">
+          <button type="button" class="icon-btn" onclick="removeObtainRow(${si},${oi})" title="ลบแถวนี้">✕</button>
+        </div>
+      `).join('')}
+    </div>`;
+  }).join('');
+  updateJsonPreview();
+}
+
+function addObtainRow(si) {
+  EDITOR_SKILLS[si].obtain.push({ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' });
+  renderEditorSkills();
+}
+function removeObtainRow(si, oi) {
+  EDITOR_SKILLS[si].obtain.splice(oi, 1);
+  if (EDITOR_SKILLS[si].obtain.length === 0) EDITOR_SKILLS.splice(si, 1);
+  renderEditorSkills();
+}
+function removeSkill(si) {
+  EDITOR_SKILLS.splice(si, 1);
+  renderEditorSkills();
+}
+
+/* Skill Picker Modal */
+function openSkillPicker() {
+  document.getElementById('picker-search').value = '';
+  renderSkillPicker();
+  document.getElementById('skill-picker-modal').classList.add('open');
+  setTimeout(() => document.getElementById('picker-search').focus(), 50);
+}
+function renderSkillPicker() {
+  const q = document.getElementById('picker-search').value.trim().toLowerCase();
+  const all = { ...SKILLS_MASTER, ...NEW_SKILLS };
+  const entries = Object.entries(all).filter(([id, m]) =>
+    !q || id.toLowerCase().includes(q) || (m.name || '').toLowerCase().includes(q)
+  ).slice(0, 60);
+
+  document.getElementById('picker-list').innerHTML = entries.map(([id, m]) => `
+    <div class="picker-row" onclick="pickExistingSkill('${DB.esc(id).replace(/'/g,"\\'")}')">
+      <div>
+        <strong style="color:var(--gold-light)">${DB.esc(m.name || id)}</strong>
+        <span class="badge" style="margin-left:6px">${DB.esc(id)}</span>
+      </div>
+      <span style="font-size:12px;color:var(--accent)">+ เลือก</span>
+    </div>
+  `).join('') || `<div style="color:var(--text-dim);padding:14px;text-align:center">ไม่พบสกิล — กดปุ่ม "✨ + สร้างสกิลใหม่" ได้เลย</div>`;
+}
+function pickExistingSkill(skillId) {
+  closeModal('skill-picker-modal');
+  let ex = EDITOR_SKILLS.find(s => s.skillId === skillId);
+  if (!ex) {
+    EDITOR_SKILLS.push({ skillId, obtain: [{ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' }] });
+  } else {
+    ex.obtain.push({ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' });
+  }
+  renderEditorSkills();
+  showToast('เพิ่มสกิล ' + getSkillMeta(skillId).name + ' แล้ว');
+}
+
+/* New Skill Modal */
+function openNewSkillModal() {
+  document.getElementById('ns-name').value = '';
+  document.getElementById('ns-id').value = '';
+  document.getElementById('ns-desc').value = '';
+  document.querySelectorAll('#ns-types .chip').forEach(c => c.classList.remove('active'));
+  document.getElementById('new-skill-modal').classList.add('open');
+}
+function saveNewSkill() {
+  const name = document.getElementById('ns-name').value.trim();
+  const rawId = document.getElementById('ns-id').value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+  const desc = document.getElementById('ns-desc').value.trim().replace(/\n/g, '<br>');
+  const types = Array.from(document.querySelectorAll('#ns-types .chip.active')).map(c => c.textContent.trim());
+  if (!name) { alert('กรุณากรอกชื่อสกิล'); return; }
+  if (!rawId) { alert('กรุณากรอกรหัสสกิลภาษาอังกฤษ (skillId) เช่น guardian'); return; }
+
+  NEW_SKILLS[rawId] = { name, type: types.length ? types : ['สกิลกดใช้'], desc };
+  if (!EDITOR_SKILLS.some(s => s.skillId === rawId)) {
+    EDITOR_SKILLS.push({ skillId: rawId, obtain: [{ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' }] });
+  }
+  closeModal('new-skill-modal');
+  renderEditorSkills();
+  showToast('สร้างสกิลใหม่ "' + name + '" เรียบร้อย!');
+}
+
+/* Build clean submission payload */
+function buildPayload() {
+  const meta = JOBS.find(j => j.key === CURRENT_JOB_KEY);
+  const parentKey = document.getElementById('inherit-select').value;
+  const jobObj = {
+    jobId: CURRENT_JOB_KEY,
+    name: document.getElementById('job-name').value.trim() || meta.label,
+    desc: document.getElementById('job-desc').value.trim(),
+    obtain: document.getElementById('job-obtain').value.trim(),
+  };
+  if (parentKey) jobObj.inherits = [parentKey];
+  jobObj.skills = EDITOR_SKILLS.map(s => ({
+    skillId: s.skillId,
+    lv: s.obtain.map(o => o.lv === '' ? 0 : Number(o.lv)),
+    obtain: s.obtain.map(o => ({
+      method: o.method,
+      lv: o.lv === '' ? 0 : Number(o.lv),
+      loc: o.loc.trim(),
+    })),
+  }));
+
+  // Only include NEW_SKILLS that are actually referenced in EDITOR_SKILLS
+  const usedIds = new Set(jobObj.skills.map(s => s.skillId));
+  const usedNewSkills = {};
+  for (const [id, val] of Object.entries(NEW_SKILLS)) {
+    if (usedIds.has(id)) usedNewSkills[id] = val;
+  }
+
+  return {
+    type: 'job_update',
+    file: meta.file,
+    job: jobObj,
+    newSkills: usedNewSkills,
+  };
+}
+
+function buildIssueMarkdown() {
+  const payload = buildPayload();
+  const contributor = document.getElementById('contrib-name').value.trim() || 'ไม่ระบุชื่อ';
+  const note = document.getElementById('contrib-note').value.trim();
+  const skillSummary = payload.job.skills.map(s => {
+    const m = getSkillMeta(s.skillId);
+    const lvs = s.obtain.map(o => `Lv.${o.lv} (${o.method}${o.loc ? ': ' + o.loc : ''})`).join(' | ');
+    return `- **${m.name}** (\`${s.skillId}\`): ${lvs}`;
+  }).join('\n') || '- *(ไม่มีสกิลเพิ่มเติม — ใช้สกิลสืบทอด)*';
+
+  const newSkillCount = Object.keys(payload.newSkills).length;
+  return [
+    `## 📝 คำขออัปเดตข้อมูลอาชีพ: ${payload.job.name}`,
+    `- **ผู้ส่งข้อมูล:** ${contributor}`,
+    `- **ไฟล์เป้าหมาย:** \`data/jobs/${payload.file}\``,
+    `- **สืบทอดจาก (inherits):** ${(payload.job.inherits || []).join(', ') || 'ไม่มี'}`,
+    `- **คำอธิบาย:** ${payload.job.desc || '-'}`,
+    `- **วิธีเปลี่ยนอาชีพ:** ${payload.job.obtain || '-'}`,
+    note ? `- **หมายเหตุ:** ${note}` : '',
+    '',
+    `### ⚔️ รายการสกิลที่ส่ง (${payload.job.skills.length} สกิล${newSkillCount ? `, สกิลใหม่ ${newSkillCount} สกิล` : ''})`,
+    skillSummary,
+    '',
+    `> **สำหรับแอดมิน:** หากตรวจสอบแล้วถูกต้อง ให้พิมพ์คอมเมนต์ \`/approve\` หรือติดป้าย \`approved\` ระบบจะอัปเดตขึ้นเว็บ **อิลูน่าพลัส** ให้อัตโนมัติทันที (หากไม่อนุมัติให้กด Close issue)`,
+    '',
+    '```json',
+    JSON.stringify(payload, null, 2),
+    '```',
+  ].filter(x => x !== '').join('\n');
+}
+
+function updateJsonPreview() {
+  const pre = document.getElementById('json-preview');
+  if (pre && document.getElementById('json-preview-wrap').style.display !== 'none') {
+    pre.textContent = JSON.stringify(buildPayload(), null, 2);
+  }
+}
+
+function toggleJsonPreview() {
+  const wrap = document.getElementById('json-preview-wrap');
+  wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+  updateJsonPreview();
+}
+
+function submitViaGitHub() {
+  const payload = buildPayload();
+  const title = `[เสนอข้อมูลอาชีพ] ${payload.job.name} (${payload.job.jobId})`;
+  const body = buildIssueMarkdown();
+  const url = `https://github.com/${GITHUB_REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+
+  if (url.length > 7500) {
+    navigator.clipboard?.writeText(body).catch(() => {});
+    alert('ข้อมูลมีขนาดยาวเกินความยาว URL — ระบบคัดลอกเนื้อหาไว้ในคลิปบอร์ดให้แล้วครับ! กด Ctrl+V วางลงในช่องรายละเอียดของ GitHub Issue ได้เลย');
+    window.open(`https://github.com/${GITHUB_REPO}/issues/new?title=${encodeURIComponent(title)}`, '_blank', 'noopener');
+  } else {
+    window.open(url, '_blank', 'noopener');
+  }
+}
+
+function copyForDiscord() {
+  const md = buildIssueMarkdown();
+  navigator.clipboard.writeText(md).then(() => {
+    showToast('คัดลอกข้อมูลเรียบร้อย! นำไปวางส่งให้แอดมินใน Discord ได้เลย');
+  }).catch(() => {
+    toggleJsonPreview();
+    showToast('กรุณาคัดลอกข้อความจากกล่องตัวอย่างด้านล่าง');
+  });
+}
+
+function downloadJson() {
+  const payload = buildPayload();
+  const blob = new Blob([JSON.stringify(payload.job, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = payload.file;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('ดาวน์โหลดไฟล์ ' + payload.file + ' แล้ว');
+}
+
+init();
+</script>
+</body>
+</html>

@@ -322,16 +322,105 @@ function mergeSkills(jobSkills, master) {
   return jobSkills.map(s => {
     const m = master[s.skillId] || {};
     return {
-      skillId:     s.skillId,
-      name:        m.name        || s.skillId,
-      type:        m.type        || [],
-      desc:        m.desc        || '',
-      image:       m.image       || null,
-      summonSkills:m.summonSkills|| null,
-      lv:          s.obtain,   // obtain array carries lv per-entry
-      obtain:      s.obtain,
+      skillId:       s.skillId,
+      name:          m.name        || s.skillId,
+      type:          m.type        || [],
+      desc:          m.desc        || '',
+      image:         m.image       || null,
+      summonSkills:  m.summonSkills|| null,
+      lv:            s.obtain,   // obtain array carries lv per-entry
+      obtain:        s.obtain,
+      inheritedFrom: s.inheritedFrom || null,
     };
   });
+}
+
+/* โหลดไฟล์ job JSON (cache ไว้ไม่โหลดซ้ำ) */
+const _jobJsonCache = {};
+async function fetchJobJson(jobKey) {
+  const matchedKey = Object.keys(jobFilesMap).find(k => k.toLowerCase() === String(jobKey || '').toLowerCase());
+  if (!matchedKey) return null;
+  if (_jobJsonCache[matchedKey] !== undefined) return _jobJsonCache[matchedKey];
+  try {
+    const r = await fetch(`${JOB_DATA_PATH}${jobFilesMap[matchedKey].file}`);
+    if (r.ok) {
+      const data = await r.json();
+      _jobJsonCache[matchedKey] = data;
+      return data;
+    }
+  } catch(e) {}
+  _jobJsonCache[matchedKey] = null;
+  return null;
+}
+
+/* รวมสกิลแบบสืบทอดอัตโนมัติ (inherits) พร้อมกันสกิล/เลเวลซ้ำ */
+async function resolveInheritedSkills(job, currentKey, visited = new Set()) {
+  const normKey = String(currentKey || job.jobId || '').toLowerCase();
+  if (visited.has(normKey)) return [];
+  visited.add(normKey);
+
+  const skillMap = new Map();
+
+  const addEntryDedup = (targetObtain, entry) => {
+    const m = (typeof entry === 'object' ? entry.method : entry) || '';
+    const lv = String(typeof entry === 'object' ? entry.lv : '').trim();
+    const loc = (typeof entry === 'object' ? entry.loc : '').trim();
+    const dupIdx = targetObtain.findIndex(ex => {
+      const em = (typeof ex === 'object' ? ex.method : ex) || '';
+      const elv = String(typeof ex === 'object' ? ex.lv : '').trim();
+      const eloc = (typeof ex === 'object' ? ex.loc : '').trim();
+      if (em === m && elv === lv) {
+        if (!loc || !eloc || loc === eloc) return true;
+        if (em === 'เปลี่ยนอาชีพ') return true;
+      }
+      return false;
+    });
+    if (dupIdx >= 0) {
+      const oldLoc = (typeof targetObtain[dupIdx] === 'object' ? targetObtain[dupIdx].loc : '') || '';
+      if (loc.length > oldLoc.length) targetObtain[dupIdx] = entry;
+    } else {
+      targetObtain.push(entry);
+    }
+  };
+
+  const parents = Array.isArray(job.inherits) ? job.inherits : (job.inherits ? [job.inherits] : []);
+  for (const parentId of parents) {
+    const pKey = Object.keys(jobFilesMap).find(k => k.toLowerCase() === String(parentId).toLowerCase());
+    const parentJob = await fetchJobJson(parentId);
+    if (!parentJob) continue;
+    const parentLabel = parentJob.name || (pKey ? jobFilesMap[pKey].label : parentId);
+    const parentSkills = await resolveInheritedSkills(parentJob, pKey || parentId, visited);
+    for (const ps of parentSkills) {
+      const sid = ps.skillId;
+      if (!skillMap.has(sid)) {
+        skillMap.set(sid, {
+          skillId: sid,
+          obtain: [...(ps.obtain || [])],
+          inheritedFrom: ps.inheritedFrom || parentLabel,
+        });
+      } else {
+        const cur = skillMap.get(sid);
+        for (const e of (ps.obtain || [])) addEntryDedup(cur.obtain, e);
+      }
+    }
+  }
+
+  for (const s of (job.skills || [])) {
+    const sid = s.skillId;
+    if (!sid) continue;
+    if (!skillMap.has(sid)) {
+      skillMap.set(sid, {
+        skillId: sid,
+        obtain: [...(s.obtain || [])],
+        inheritedFrom: null,
+      });
+    } else {
+      const cur = skillMap.get(sid);
+      for (const e of (s.obtain || [])) addEntryDedup(cur.obtain, e);
+    }
+  }
+
+  return Array.from(skillMap.values());
 }
 
 /* ── jobFilesMap: ครบทุกอาชีพ รวมอาชีพย่อย ── */
@@ -351,7 +440,7 @@ const jobFilesMap = {
   'apprentice_gladiator':   { file: 'apprentice_gladiator.json',   label: 'จอมดาบฝึกหัด' },
   'gladiator':              { file: 'gladiator.json',              label: 'จอมดาบ' },
   'apprentice_beastknight':{ file: 'apprentice_beastknight.json', label: 'บีทไนท์ฝึกหัด' },
-  'beastknight':           { file: 'beastknight.json',           label: 'บีทไนท์' },
+  'beastknight':           { file: 'beastk_night.json',           label: 'บีทไนท์' },
 
   /* ── สายนายพราน ── */
   'apprentice_hunter': { file: 'apprentice_hunter.json', label: 'นายพรานฝึกหัด' },
@@ -534,7 +623,10 @@ function buildSkillCard(s) {
         : `<div class="skill-icon-placeholder">P</div>`}
       <div class="skill-name-wrap">
         <div class="skill-name">${s.name}</div>
-        <div class="skill-tags">${buildTagHTML(s.type)}</div>
+        <div class="skill-tags">
+          ${buildTagHTML(s.type)}
+          ${s.inheritedFrom ? `<span class="tag tag-default" style="opacity:.85;border-style:dashed" title="สกิลสืบทอดอัตโนมัติ">↳ สืบทอดจาก ${s.inheritedFrom}</span>` : ''}
+        </div>
       </div>
     </div>
     ${s.desc ? `<div class="skill-desc">${s.desc}</div>` : ''}
@@ -739,8 +831,11 @@ async function renderJob(jobId) {
   if (!job) {
     vp.innerHTML = `<div class="job-header-card">
       <div class="job-name">${entry.label}</div>
-      <div class="job-desc">ยังไม่มีข้อมูลอาชีพนี้ในฐานข้อมูล กรุณารอการอัปเดต</div>
-      <a href="job_tree" class="back-btn">← กลับไปเส้นทางอาชีพ</a>
+      <div class="job-desc">ยังไม่มีข้อมูลอาชีพนี้ในฐานข้อมูล กรุณารอการอัปเดต หรือช่วยเพิ่มข้อมูลได้เลย!</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <a href="contribute.html?job=${encodeURIComponent(matchedKey)}" class="back-btn" style="margin:0;border-color:var(--gold);color:var(--gold-light)">📝 ช่วยเพิ่มข้อมูลอาชีพนี้</a>
+        <a href="job_tree.html" class="back-btn" style="margin:0">← กลับไปเส้นทางอาชีพ</a>
+      </div>
     </div>`;
     return;
   }
@@ -755,25 +850,31 @@ async function renderJob(jobId) {
     ? `<div class="job-obtain"><span class="job-obtain-label">วิธีเปลี่ยนอาชีพ</span>${parseObtainText(job.obtain)}</div>`
     : '';
 
-  /* โหลด skills master แล้ว merge กับ job skills */
-  const master = await getSkillsMaster();
-  const skills = mergeSkills(job.skills || [], master);
+  /* โหลด skills master + สกิลสืบทอดอัตโนมัติ (inherits) แล้ว merge */
+  const [master, resolvedSkills] = await Promise.all([
+    getSkillsMaster(),
+    resolveInheritedSkills(job, matchedKey),
+  ]);
+  const skills = mergeSkills(resolvedSkills, master);
   window._jobSkills = skills;
   const skillsHTML = skills.length
     ? `<div id="filter-bar" class="filter-bar"></div>
        <div class="skills-list">${skills.map(buildSkillCard).join('')}</div>`
-    : `<div class="job-header-card" style="color:var(--text-dim);font-size:14px;">ยังไม่มีข้อมูลสกิล</div>`;
+    : `<div class="job-header-card" style="color:var(--text-dim);font-size:14px;">ยังไม่มีข้อมูลสกิล — <a href="contribute.html?job=${encodeURIComponent(matchedKey)}" style="color:var(--accent)">คลิกเพื่อช่วยเพิ่มข้อมูลอาชีพนี้</a></div>`;
 
   vp.innerHTML = `
     <div class="job-header-card">
-      <div class="job-name">${job.name || entry.label}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+        <div class="job-name">${job.name || entry.label}</div>
+        <a href="contribute.html?job=${encodeURIComponent(matchedKey)}" class="filter-toggle-btn" style="margin:0;text-decoration:none;font-size:12.5px">✏️ ช่วยเพิ่ม/แก้ไขข้อมูลอาชีพนี้</a>
+      </div>
       ${job.desc ? `<p class="job-desc">${job.desc}</p>` : ''}
       ${obtainHTML}
       ${metaHTML ? `<div class="job-meta">${metaHTML}</div>` : ''}
     </div>
     ${skills.length ? '<div class="section-title">⚔ สกิล</div>' : ''}
     ${skillsHTML}
-    <a href="job_tree" class="back-btn">← กลับไปเส้นทางอาชีพ</a>
+    <a href="job_tree.html" class="back-btn">← กลับไปเส้นทางอาชีพ</a>
   `;
 
   if (skills.length) setupFilters(skills);

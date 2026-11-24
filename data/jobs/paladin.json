@@ -1,8 +1,11 @@
 {
-  "jobId": "Paladin",
+  "jobId": "paladin",
   "name": "พาลาดิน",
   "desc": "อัศวินศักดิ์สิทธิ์แนวหน้า",
   "obtain": "รอข้อมูลอัพเดต",
+  "inherits": [
+    "apprentice_paladin"
+  ],
   "prereq": [
     "รอข้อมูลอัพเดต",
     "เร็วๆนี้"

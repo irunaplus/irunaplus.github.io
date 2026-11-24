@@ -72,7 +72,6 @@ DB.initSidebar();
 
 const GUIDE_LIST = [
   { key: 'pets', label: '🐾 สัตว์เลี้ยง (Pets)' },
-  { key: 'classes', label: '⚔️ อาชีพ (Classes)' },
   { key: 'stats', label: '📈 ค่าสถานะ (Stats)' },
   { key: 'skills', label: '✨ สกิล (Skills)' },
   { key: 'abilities', label: '⭐ อบิลิตี้ (☆Abilities)' },
@@ -87,6 +86,10 @@ const GUIDE_LIST = [
 const PAGE_KEY = DB.qs('page') || 'pets';
 
 async function init() {
+  if (PAGE_KEY === 'classes') {
+    location.replace('job_tree.html');
+    return;
+  }
   document.getElementById('guide-tabs').innerHTML = GUIDE_LIST.map(g =>
     `<a class="tab-pill ${g.key === PAGE_KEY ? 'active' : ''}" href="db_guide.html?page=${encodeURIComponent(g.key)}">${DB.esc(g.label)}</a>`
   ).join('') + `<a class="tab-pill" href="db_quests.html">📜 เควสต์ (Quests)</a>`;
