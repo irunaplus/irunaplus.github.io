@@ -211,19 +211,29 @@
     <div class="inh-list" id="inh-list"></div>
   </div>
 
-  <!-- Section 3: Job-specific Skills Editor -->
+  <!-- Section 3: Inherited and class-specific skills editor -->
   <div class="db-panel">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-      <div>
-        <h3 style="color:var(--gold-light);font-size:16px">2. สกิลเฉพาะของอาชีพนี้ (หรือเลเวลอัปเกรดใหม่)</h3>
-        <div style="font-size:12.5px;color:var(--text-dim)">เพิ่มเฉพาะสกิลใหม่ หรือเลเวลใหม่ที่เพิ่งได้ในอาชีพนี้</div>
+    <h3 style="color:var(--gold-light);font-size:16px;margin-bottom:14px">2. กรอกข้อมูลสกิลของอาชีพนี้</h3>
+    <div style="padding:14px;border:1px solid rgba(139,92,246,0.3);border-radius:12px;margin-bottom:16px">
+      <div style="margin-bottom:12px">
+        <h4 style="color:var(--accent);font-size:14px">สกิลสืบทอดจากอาชีพก่อนหน้า</h4>
+        <div style="font-size:12.5px;color:var(--text-dim)">เพิ่มหรือแก้เฉพาะเลเวลใหม่ของสกิลที่สืบทอดมา รายการที่ยังไม่เพิ่มจะใช้ข้อมูลจากอาชีพก่อนหน้า</div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button type="button" class="db-btn" onclick="openSkillPicker()">🔍 + เลือกสกิลที่มีอยู่แล้ว</button>
-        <button type="button" class="db-btn secondary" onclick="openNewSkillModal()">✨ + สร้างสกิลใหม่</button>
-      </div>
+      <div id="inherited-skill-editor-list"></div>
     </div>
-    <div id="skills-editor-list"></div>
+    <div style="padding:14px;border:1px solid rgba(245,200,66,0.24);border-radius:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+        <div>
+          <h4 style="color:var(--gold-light);font-size:14px">สกิลประจำคลาส (ไม่ได้สืบทอด)</h4>
+          <div style="font-size:12.5px;color:var(--text-dim)">สกิลใหม่หรือสกิลที่เป็นของอาชีพนี้โดยเฉพาะ</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="db-btn" onclick="openSkillPicker()">🔍 + เลือกสกิลที่มีอยู่แล้ว</button>
+          <button type="button" class="db-btn secondary" onclick="openNewSkillModal()">✨ + สร้างสกิลใหม่</button>
+        </div>
+      </div>
+      <div id="class-skill-editor-list"></div>
+    </div>
   </div>
 
   <!-- Section 4: Submit for Approval -->
@@ -1016,16 +1026,16 @@ function autoCleanDuplicates() {
 }
 
 function renderEditorSkills() {
-  const wrap = document.getElementById('skills-editor-list');
-  if (!EDITOR_SKILLS.length) {
-    wrap.innerHTML = `<div class="empty-state" style="padding:26px">
-      ยังไม่มีสกิลเฉพาะของอาชีพนี้ — กด <strong>🔍 + เลือกสกิลที่มีอยู่แล้ว</strong> หรือ <strong>✨ + สร้างสกิลใหม่</strong> ด้านบนได้เลย
-    </div>`;
-    updateJsonPreview();
-    return;
-  }
+  const inheritedWrap = document.getElementById('inherited-skill-editor-list');
+  const classWrap = document.getElementById('class-skill-editor-list');
+  const inheritedSkills = EDITOR_SKILLS
+    .map((s, si) => ({ s, si }))
+    .filter(({ s }) => INHERITED_SKILLS.has(s.skillId));
+  const classSkills = EDITOR_SKILLS
+    .map((s, si) => ({ s, si }))
+    .filter(({ s }) => !INHERITED_SKILLS.has(s.skillId));
 
-  wrap.innerHTML = EDITOR_SKILLS.map((s, si) => {
+  const renderCards = skills => skills.map(({ s, si }) => {
     const m = getSkillMeta(s.skillId);
     const isInh = INHERITED_SKILLS.has(s.skillId);
     const isNew = Boolean(NEW_SKILLS[s.skillId]);
@@ -1078,6 +1088,10 @@ function renderEditorSkills() {
       }).join('')}
     </div>`;
   }).join('');
+  inheritedWrap.innerHTML = renderCards(inheritedSkills) ||
+    `<div class="empty-state" style="padding:18px">ยังไม่มีการเพิ่มเลเวลใหม่ของสกิลสืบทอด เลือกสกิลจากรายการด้านบนแล้วกด “+ เพิ่มเลเวลใหม่” ได้เลย</div>`;
+  classWrap.innerHTML = renderCards(classSkills) ||
+    `<div class="empty-state" style="padding:18px">ยังไม่มีสกิลประจำคลาส กด “🔍 + เลือกสกิลที่มีอยู่แล้ว” หรือ “✨ + สร้างสกิลใหม่” เพื่อเพิ่มข้อมูล</div>`;
   updateJsonPreview();
 }
 
