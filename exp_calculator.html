@@ -508,7 +508,7 @@ td:first-child { font-family: 'Cinzel', serif; font-weight: 600; font-size: 12px
   </header>
 
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
-    <a class="back-link" style="margin-bottom:0" href="https://peerapa13.github.io/iruna_class_skill/">กลับหน้าหลัก</a>
+    <a class="back-link" style="margin-bottom:0" href="https://irunaplus.github.io/">กลับหน้าหลัก</a>
     <button class="qbtn" id="lookup-toggle-btn" onclick="toggleLookup()" style="padding:6px 14px;font-family:'Sarabun',sans-serif;font-size:13px;">🔍 หา Lv จาก EXP สะสม</button>
   </div>
 
@@ -848,7 +848,7 @@ td:first-child { font-family: 'Cinzel', serif; font-weight: 600; font-size: 12px
 
   <footer class="site-footer">
     ✦ ข้อมูล Lv 371–405 เป็นการประมาณจากแพทเทิร์น ✦<br>
-    <a href="https://peerapa13.github.io/iruna_class_skill/" style="color:var(--gold-dim);text-decoration:none;margin-top:6px;display:inline-block;">← กลับ Iruna Class Skill Library</a>
+    <a href="https://irunaplus.github.io/" style="color:var(--gold-dim);text-decoration:none;margin-top:6px;display:inline-block;">← กลับ Iruna Class Skill Library</a>
   </footer>
 </div>
 
@@ -895,7 +895,7 @@ td:first-child { font-family: 'Cinzel', serif; font-weight: 600; font-size: 12px
   <div style="display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid #2a3045;padding-top:14px;">
     <div>
       <div style="font-size:10px;color:#555b72;margin-bottom:3px;" id="ec1-ts">—</div>
-      <div style="font-size:10px;color:#555b72;">peerapa13.github.io/iruna_class_skill/exp_calculator</div>
+      <div style="font-size:10px;color:#555b72;">irunaplus.github.io/exp_calculator</div>
     </div>
     <div style="text-align:center;">
       <div id="ec1-qr" style="background:#fff;padding:4px;border-radius:4px;display:inline-block;"></div>
@@ -950,7 +950,7 @@ td:first-child { font-family: 'Cinzel', serif; font-weight: 600; font-size: 12px
   <div style="display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid #2a3045;padding-top:14px;">
     <div>
       <div style="font-size:10px;color:#555b72;margin-bottom:3px;" id="ec2-ts">—</div>
-      <div style="font-size:10px;color:#555b72;">peerapa13.github.io/iruna_class_skill/exp_calculator</div>
+      <div style="font-size:10px;color:#555b72;">irunaplus.github.io/exp_calculator</div>
     </div>
     <div style="text-align:center;">
       <div id="ec2-qr" style="background:#fff;padding:4px;border-radius:4px;display:inline-block;"></div>
@@ -992,7 +992,7 @@ td:first-child { font-family: 'Cinzel', serif; font-weight: 600; font-size: 12px
     </div>
   </div>
   <div style="display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid #2a3045;padding-top:14px;">
-    <div><div style="font-size:10px;color:#555b72;margin-bottom:3px;" id="ec3-ts">—</div><div style="font-size:10px;color:#555b72;">peerapa13.github.io/iruna_class_skill/exp_calculator</div></div>
+    <div><div style="font-size:10px;color:#555b72;margin-bottom:3px;" id="ec3-ts">—</div><div style="font-size:10px;color:#555b72;">irunaplus.github.io/exp_calculator</div></div>
     <div style="text-align:center;"><div id="ec3-qr" style="background:#fff;padding:4px;border-radius:4px;display:inline-block;"></div><div style="font-size:9px;color:#555b72;margin-top:3px;">สแกนเพื่อเข้าเว็บ</div></div>
   </div>
 </div>
@@ -1454,7 +1454,7 @@ async function buildQR(qrId) {
   return new Promise(resolve => {
     const qrDiv = document.getElementById(qrId);
     qrDiv.innerHTML = '';
-    new QRCode(qrDiv, { text:'https://peerapa13.github.io/iruna_class_skill/exp_calculator', width:72, height:72, colorDark:'#000000', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.H });
+    new QRCode(qrDiv, { text:'https://irunaplus.github.io/exp_calculator', width:72, height:72, colorDark:'#000000', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.H });
     setTimeout(() => {
       const qrCanvas = qrDiv.querySelector('canvas');
       if (qrCanvas) {
