@@ -405,21 +405,12 @@
       </div>
       <div class="field" id="lh-skill-wrap" style="display:none">
         <label>เลือกสกิล</label>
-        <select class="db-select" id="lh-skill-select" onchange="syncSkillLinkLabel()"></select>
-        <div class="form-grid">
-          <div class="field">
-            <label>เลเวลสกิล</label>
-            <input class="db-input" id="lh-skill-level" type="number" min="1" step="1" value="1" oninput="syncSkillLinkLabel()">
-          </div>
-          <div class="field">
-            <label>วิธีได้สกิล</label>
-            <select class="db-select" id="lh-skill-method" onchange="syncSkillLinkLabel()">
-              <option value="เควสต์">เควสต์</option>
-              <option value="ไอเทมดรอป">ไอเทมดรอป</option>
-              <option value="ไอเทมซื้อร้านค้า">ไอเทมซื้อร้านค้า</option>
-            </select>
-          </div>
+        <select class="db-select" id="lh-skill-select" onchange="syncSkillLinkLevels()"></select>
+        <div class="field">
+          <label>เลเวลสกิล</label>
+          <select class="db-select" id="lh-skill-level" onchange="syncSkillLinkLabel()"></select>
         </div>
+        <div style="font-size:12px;color:var(--text-dim)">ระบบดึงวิธีได้สกิลจากข้อมูลของอาชีพนี้ให้อัตโนมัติ</div>
       </div>
       <div class="field" id="lh-item-wrap" style="display:none">
         <label for="lh-item-search">ค้นหาและเลือกไอเทมในฐานข้อมูล</label>
@@ -728,6 +719,8 @@ let LINK_MODAL_MODE = 'job';
 let LINK_ITEM_INDEX = [];
 let LINK_ITEM_MATCHES = [];
 let SELECTED_LINK_ITEM = null;
+let LINK_SKILL_ROWS = new Map();
+let SELECTED_LINK_SKILL_METHOD = '';
 
 function showToast(msg) {
   const el = document.getElementById('toast');
@@ -972,25 +965,43 @@ function syncJobLinkLabel() {
 }
 function openSkillLinkModal() {
   prepareLinkModal('skill', '📋 แทรกลิงก์วิธีทำสกิล');
-  const skills = { ...SKILLS_MASTER, ...NEW_SKILLS };
-  const options = Object.entries(skills)
-    .sort((a, b) => String(a[1].name || a[0]).localeCompare(String(b[1].name || b[0]), 'th'))
-    .map(([id, meta]) => `<option value="${DB.esc(id)}">${DB.esc(meta.name || id)}</option>`);
+  const skills = Array.from(EDITOR_SKILL_ROWS.entries())
+    .map(([id, state]) => ({ id, meta: getSkillMeta(id), rows: state.obtain }))
+    .filter(skill => skill.rows.some(row => methodToFolder(row.method)))
+    .sort((a, b) => String(a.meta.name || a.id).localeCompare(String(b.meta.name || b.id), 'th'));
+  LINK_SKILL_ROWS = new Map(skills.map(skill => [skill.id, skill.rows]));
+  const options = skills.map(({ id, meta }) =>
+    `<option value="${DB.esc(id)}">${DB.esc(meta.name || id)}</option>`
+  );
   const select = document.getElementById('lh-skill-select');
   select.innerHTML = options.join('');
-  const currentSkill = EDITOR_SKILLS.find(skill => skills[skill.skillId]);
+  const currentSkill = EDITOR_SKILLS.find(skill => LINK_SKILL_ROWS.has(skill.skillId));
   if (currentSkill) select.value = currentSkill.skillId;
-  document.getElementById('lh-skill-level').value = '1';
-  document.getElementById('lh-skill-method').value = 'เควสต์';
+  document.getElementById('lh-skill-level').innerHTML = '';
+  if (!skills.length) {
+    select.innerHTML = '<option value="">ไม่มีสกิลที่มีวิธีได้ในฐานข้อมูล</option>';
+  }
+  syncSkillLinkLevels();
+}
+function syncSkillLinkLevels() {
+  const skillId = document.getElementById('lh-skill-select').value;
+  const rows = LINK_SKILL_ROWS.get(skillId) || [];
+  const levelSelect = document.getElementById('lh-skill-level');
+  levelSelect.innerHTML = rows
+    .map((row, index) => ({ row, level: index + 1 }))
+    .filter(({ row }) => methodToFolder(row.method))
+    .map(({ level }) => `<option value="${level}">Lv.${level}</option>`)
+    .join('');
   syncSkillLinkLabel();
 }
 function syncSkillLinkLabel() {
   const skillId = document.getElementById('lh-skill-select').value;
-  const skill = (NEW_SKILLS[skillId] || SKILLS_MASTER[skillId]);
   const level = Number(document.getElementById('lh-skill-level').value);
-  document.getElementById('lh-label').value = skill && Number.isInteger(level) && level > 0
-    ? `${skill.name || skillId} Lv.${level}`
-    : '';
+  const row = LINK_SKILL_ROWS.get(skillId)?.[level - 1];
+  SELECTED_LINK_SKILL_METHOD = row && methodToFolder(row.method) ? row.method : '';
+  const skill = getSkillMeta(skillId);
+  document.getElementById('lh-label').value = SELECTED_LINK_SKILL_METHOD && Number.isInteger(level) && level > 0
+    ? `${skill.name || skillId} Lv.${level}` : '';
 }
 async function openItemLinkModal() {
   prepareLinkModal('item', '🎒 แทรกลิงก์ไอเทม');
@@ -1113,14 +1124,14 @@ function confirmInsertLink() {
   } else if (LINK_MODAL_MODE === 'skill') {
     const skillId = document.getElementById('lh-skill-select').value;
     const level = Number(document.getElementById('lh-skill-level').value);
-    if (!skillId || !Number.isInteger(level) || level < 1) {
-      alert('กรุณาเลือกสกิลและระบุเลเวลสกิลให้ถูกต้อง');
+    if (!skillId || !SELECTED_LINK_SKILL_METHOD || !Number.isInteger(level) || level < 1) {
+      alert('ไม่พบข้อมูลวิธีได้สกิลของเลเวลนี้ในอาชีพที่กำลังแก้ไข');
       return;
     }
     const query = new URLSearchParams({
       skill: skillId,
       lv: String(level),
-      type: document.getElementById('lh-skill-method').value,
+      type: SELECTED_LINK_SKILL_METHOD,
     });
     insertAtCursor(ta, ` <a href='obtain.html?${query.toString()}'>${label}</a> `);
   } else if (LINK_MODAL_MODE === 'item') {
