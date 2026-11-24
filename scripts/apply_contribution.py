@@ -17,6 +17,8 @@ sys.stdout.reconfigure(encoding="utf-8")
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 JOBS_DIR = REPO_ROOT / "data" / "jobs"
 SKILLS_FILE = REPO_ROOT / "data" / "skills.json"
+NPC_DIR = REPO_ROOT / "data" / "NPC"
+NPC_MAP_FILE = NPC_DIR / "npc_id_map.json"
 
 ALLOWED_FILENAME_RE = re.compile(r"^[a-z0-9_]+\.json$")
 
@@ -100,6 +102,44 @@ def main():
                 encoding="utf-8",
             )
             print(f"Merged {len(added)} skill(s) into data/skills.json: {added}")
+
+    # Merge any new NPCs into data/NPC/npc_id_map.json and data/NPC/<npc_id>.json
+    new_npcs = payload.get("newNpcs") or {}
+    if isinstance(new_npcs, dict) and new_npcs:
+        NPC_DIR.mkdir(parents=True, exist_ok=True)
+        npc_map = json.loads(NPC_MAP_FILE.read_text(encoding="utf-8")) if NPC_MAP_FILE.exists() else {}
+        added_npcs = []
+        for nid, ndata in new_npcs.items():
+            nid = str(nid).strip().lower()
+            if not re.match(r"^[a-z0-9_]+$", nid):
+                continue
+            if not isinstance(ndata, dict) or not str(ndata.get("name", "")).strip():
+                continue
+            n_name = str(ndata["name"]).strip()
+            npc_map[n_name] = nid
+            npc_file = NPC_DIR / f"{nid}.json"
+            existing_npc = json.loads(npc_file.read_text(encoding="utf-8")) if npc_file.exists() else {}
+            npc_obj = {}
+            img = str(ndata.get("image") or existing_npc.get("image") or "").strip()
+            loc = str(ndata.get("location") or existing_npc.get("location") or "").strip()
+            desc = str(ndata.get("desc") or existing_npc.get("desc") or "").strip()
+            if img:
+                npc_obj["image"] = img
+            if loc:
+                npc_obj["location"] = loc
+            if desc:
+                npc_obj["desc"] = desc
+            npc_file.write_text(
+                json.dumps(npc_obj, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            added_npcs.append(f"{n_name} ({nid})")
+        if added_npcs:
+            NPC_MAP_FILE.write_text(
+                json.dumps(npc_map, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            print(f"Merged {len(added_npcs)} NPC(s) into data/NPC/: {added_npcs}")
 
 
 if __name__ == "__main__":

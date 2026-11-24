@@ -171,7 +171,7 @@
       <label for="job-obtain">วิธีเปลี่ยนอาชีพ (เลเวล / NPC / สถานที่)</label>
       <div class="helper-toolbar">
         <button type="button" class="helper-btn" onclick="openJobLinkModal()">🔗 แทรกลิงก์ไปหน้าอาชีพอื่น</button>
-        <button type="button" class="helper-btn" onclick="openNpcLinkModal()">📍 แทรกจุด NPC (กดดูรูปตำแหน่งได้)</button>
+        <button type="button" class="helper-btn" onclick="openNpcLinkModal()">📍 แทรกจุด NPC / เพิ่ม NPC ใหม่</button>
         <button type="button" class="helper-btn" onclick="insertLineBreak()">↵ ขึ้นบรรทัดใหม่</button>
       </div>
       <textarea id="job-obtain" placeholder="เช่น เลเวล 140 เปลี่ยนอาชีพกับ NPC ... ที่เมือง ..." oninput="updateObtainPreview(); updateJsonPreview()"></textarea>
@@ -301,8 +301,35 @@
         <select class="db-select" id="lh-job-select" onchange="syncJobLinkLabel()"></select>
       </div>
       <div class="field" id="lh-npc-wrap" style="display:none">
-        <label>เลือก NPC (กดที่ชื่อบนหน้าเว็บเพื่อดูรูปตำแหน่งได้)</label>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <label style="margin:0">เลือก NPC ที่มีอยู่แล้ว</label>
+          <button type="button" class="db-btn secondary" style="padding:3px 9px;font-size:12px" onclick="toggleNewNpcForm()">✨ + เพิ่ม NPC ใหม่</button>
+        </div>
         <select class="db-select" id="lh-npc-select" onchange="syncNpcLinkLabel()"></select>
+        <div id="new-npc-form" style="display:none;margin-top:10px;padding:12px;border-radius:9px;background:rgba(15,23,42,0.85);border:1px solid rgba(212,168,67,0.38)">
+          <div style="font-size:13px;font-weight:700;color:var(--gold-light);margin-bottom:8px">✨ สร้าง NPC ใหม่เข้าฐานข้อมูล (ส่งขออนุมัติพร้อมกัน)</div>
+          <div class="field">
+            <label>ชื่อ NPC (ภาษาไทย) *</label>
+            <input class="db-input" id="nnpc-name" type="text" placeholder="เช่น ลาร์กัน, มาเรล">
+          </div>
+          <div class="field">
+            <label>รหัสภาษาอังกฤษ (ไม่บังคับ — ปล่อยว่างระบบสร้างให้เอง)</label>
+            <input class="db-input" id="nnpc-id" type="text" placeholder="เช่น largan">
+          </div>
+          <div class="field">
+            <label>สถานที่ / เมืองที่อยู่</label>
+            <input class="db-input" id="nnpc-loc" type="text" placeholder="เช่น กิลด์ในสถานกงสุล มหานครโซเฟีย">
+          </div>
+          <div class="field">
+            <label>ลิงก์รูปภาพ NPC (ไม่บังคับ — วาง URL รูปได้เลย)</label>
+            <input class="db-input" id="nnpc-img" type="text" placeholder="https://...">
+          </div>
+          <div class="field">
+            <label>คำอธิบายเพิ่มเติม (ไม่บังคับ)</label>
+            <input class="db-input" id="nnpc-desc" type="text" placeholder="เช่น ยืนอยู่ด้านในสุดของห้องกิลด์">
+          </div>
+          <button type="button" class="db-btn" style="width:100%;justify-content:center" onclick="saveNewNpc()">✅ บันทึก NPC ใหม่แล้วเลือกใช้งาน</button>
+        </div>
       </div>
       <div class="field">
         <label>ข้อความที่ต้องการแสดงบนหน้าเว็บ</label>
@@ -380,6 +407,7 @@ const OBTAIN_METHODS = ['เปลี่ยนอาชีพ', 'เควสต
 let SKILLS_MASTER = {};
 let NPC_ID_MAP = {};
 let NEW_SKILLS = {};
+let NEW_NPCS = {};
 let JOB_CACHE = {};
 let CURRENT_JOB_KEY = '';
 let INHERITED_SKILLS = new Map(); // skillId -> { obtain: [...], from: label }
@@ -515,10 +543,7 @@ async function init() {
   document.getElementById('lh-job-select').innerHTML = JOBS.map(j =>
     `<option value="${j.key}">${j.label}</option>`
   ).join('');
-  const npcEntries = Object.entries(NPC_ID_MAP || {});
-  document.getElementById('lh-npc-select').innerHTML = (npcEntries.length
-    ? npcEntries.map(([name, id]) => `<option value="${DB.esc(id)}" data-name="${DB.esc(name)}">${DB.esc(name)} (${DB.esc(id)})</option>`).join('')
-    : `<option value="warna" data-name="วาร์นา">วาร์นา (warna)</option>`);
+  renderNpcSelect();
 
   const jobSel = document.getElementById('job-select');
   jobSel.innerHTML = JOBS.map(j => `<option value="${j.key}">${j.label} (${j.key})</option>`).join('');
@@ -589,11 +614,64 @@ function syncJobLinkLabel() {
   const meta = JOBS.find(j => j.key === key);
   document.getElementById('lh-label').value = meta ? `จำเป็นต้องเป็น${meta.label}ก่อน` : '';
 }
+function renderNpcSelect(selectedId) {
+  const combined = [];
+  const seen = new Set();
+  for (const [name, id] of Object.entries(NPC_ID_MAP || {})) {
+    seen.add(id);
+    combined.push({ id, name, loc: '', isNew: false });
+  }
+  for (const [id, info] of Object.entries(NEW_NPCS || {})) {
+    if (seen.has(id)) {
+      const idx = combined.findIndex(x => x.id === id);
+      if (idx >= 0) combined[idx] = { id, name: info.name, loc: info.location || '', isNew: true };
+    } else {
+      combined.push({ id, name: info.name, loc: info.location || '', isNew: true });
+    }
+  }
+  if (!combined.length) combined.push({ id: 'warna', name: 'วาร์นา', loc: 'ฐานทัพไบลุน', isNew: false });
+  const sel = document.getElementById('lh-npc-select');
+  sel.innerHTML = combined.map(n =>
+    `<option value="${DB.esc(n.id)}" data-name="${DB.esc(n.name)}" data-loc="${DB.esc(n.loc)}" ${n.id === selectedId ? 'selected' : ''}>${DB.esc(n.name)}${n.loc ? ' — ' + DB.esc(n.loc) : ''} (${DB.esc(n.id)})${n.isNew ? ' ✨' : ''}</option>`
+  ).join('');
+}
+function toggleNewNpcForm() {
+  const f = document.getElementById('new-npc-form');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+function saveNewNpc() {
+  const name = document.getElementById('nnpc-name').value.trim();
+  if (!name) { alert('กรุณากรอกชื่อ NPC'); return; }
+  const typedId = document.getElementById('nnpc-id').value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+  const id = typedId || ('npc_' + Date.now().toString(36).slice(-5));
+  const loc = document.getElementById('nnpc-loc').value.trim();
+  const img = document.getElementById('nnpc-img').value.trim();
+  const desc = document.getElementById('nnpc-desc').value.trim();
+
+  const obj = { name };
+  if (loc) obj.location = loc;
+  if (img) obj.image = img;
+  if (desc) obj.desc = desc;
+  NEW_NPCS[id] = obj;
+
+  renderNpcSelect(id);
+  document.getElementById('new-npc-form').style.display = 'none';
+  document.getElementById('nnpc-name').value = '';
+  document.getElementById('nnpc-id').value = '';
+  document.getElementById('nnpc-loc').value = '';
+  document.getElementById('nnpc-img').value = '';
+  document.getElementById('nnpc-desc').value = '';
+  syncNpcLinkLabel();
+  updateJsonPreview();
+  showToast('เพิ่ม NPC "' + name + '" แล้ว! กด "แทรกลงในช่องวิธีเปลี่ยนอาชีพ" ได้เลย');
+}
 function openNpcLinkModal() {
   LINK_MODAL_MODE = 'npc';
   document.getElementById('lh-title').textContent = '📍 แทรกจุด NPC (กดดูรูปตำแหน่งได้)';
   document.getElementById('lh-job-wrap').style.display = 'none';
   document.getElementById('lh-npc-wrap').style.display = 'flex';
+  document.getElementById('new-npc-form').style.display = 'none';
+  renderNpcSelect();
   syncNpcLinkLabel();
   document.getElementById('link-helper-modal').classList.add('open');
 }
@@ -601,7 +679,8 @@ function syncNpcLinkLabel() {
   const sel = document.getElementById('lh-npc-select');
   const opt = sel.options[sel.selectedIndex];
   const n = opt ? (opt.dataset.name || opt.textContent) : '';
-  document.getElementById('lh-label').value = n ? `${n} ที่...` : '';
+  const loc = opt ? (opt.dataset.loc || '') : '';
+  document.getElementById('lh-label').value = n ? (loc ? `${n} ที่${loc}` : `${n} ที่...`) : '';
 }
 function confirmInsertLink() {
   const label = document.getElementById('lh-label').value.trim();
@@ -955,12 +1034,14 @@ function buildPayload() {
     if (usedIds.has(id)) usedNewSkills[id] = val;
   }
 
-  return {
+  const payload = {
     type: 'job_update',
     file: meta.file,
     job: jobObj,
     newSkills: usedNewSkills,
   };
+  if (Object.keys(NEW_NPCS).length) payload.newNpcs = NEW_NPCS;
+  return payload;
 }
 
 function buildIssueMarkdown() {
@@ -980,6 +1061,9 @@ function buildIssueMarkdown() {
     ).join('\n');
     return `- ✨ **${m.name}** (\`${id}\`) | ประเภท: \`${(m.type || []).join(', ')}\`${m.desc ? ' — ' + m.desc.replace(/<br\s*\/?>/gi, ' ') : ''}${subLines ? '\n' + subLines : ''}`;
   }).join('\n');
+  const newNpcDetails = Object.entries(payload.newNpcs || {}).map(([id, n]) =>
+    `- 📍 **${n.name}** (\`${id}\`)${n.location ? ' — สถานที่: ' + n.location : ''}${n.image ? ' · มีรูปภาพ' : ''}${n.desc ? ' · ' + n.desc : ''}`
+  ).join('\n');
   return [
     `## 📝 คำขออัปเดตข้อมูลอาชีพ: ${payload.job.name}`,
     `- **ผู้ส่งข้อมูล:** ${contributor}`,
@@ -992,6 +1076,7 @@ function buildIssueMarkdown() {
     `### ⚔️ รายการสกิลที่ส่ง (${payload.job.skills.length} สกิล${newSkillCount ? `, สกิลใหม่ ${newSkillCount} สกิล` : ''})`,
     skillSummary,
     newSkillDetails ? '\n### ✨ รายละเอียดสกิลใหม่ / ประเภทสกิลที่เพิ่ม\n' + newSkillDetails : '',
+    newNpcDetails ? '\n### 📍 NPC ใหม่ที่ขอเพิ่ม\n' + newNpcDetails : '',
     '',
     '```json',
     JSON.stringify(payload, null, 2),
