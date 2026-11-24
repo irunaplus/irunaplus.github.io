@@ -78,8 +78,10 @@ def main():
                 raise ValueError("Each job skill must be an object")
             if not isinstance(skill.get("skillId"), str) or not skill["skillId"]:
                 raise ValueError("Each job skill must have a skillId")
-            if ptype == "job_patch" and any(key not in {"skillId", "obtain", "lv", "maxSkillLevel"} for key in skill):
+            if ptype == "job_patch" and any(key not in {"skillId", "obtain", "lv", "maxSkillLevel", "replaceObtain"} for key in skill):
                 raise ValueError(f"Unsupported job skill patch fields for {skill['skillId']!r}")
+            if "replaceObtain" in skill and not isinstance(skill["replaceObtain"], bool):
+                raise ValueError(f"Invalid replaceObtain for skill {skill.get('skillId', '')!r}")
             if "maxSkillLevel" in skill:
                 max_level = skill["maxSkillLevel"]
                 if max_level is not None and (not isinstance(max_level, int) or isinstance(max_level, bool) or max_level < 1):
@@ -184,7 +186,7 @@ def main():
                     None,
                 )
                 current = dict(updated_skills[current_index]) if current_index is not None else {"skillId": skill_id}
-                for field in ("obtain", "lv"):
+                for field in ("obtain", "lv", "replaceObtain"):
                     if field in skill_patch:
                         current[field] = skill_patch[field]
                 if "maxSkillLevel" in skill_patch:

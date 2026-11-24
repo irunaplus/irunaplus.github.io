@@ -40,30 +40,47 @@
     background: rgba(24,31,52,0.9); border: 1px solid var(--border);
     font-size: 12.5px; color: var(--text);
   }
-  .inh-add-btn {
-    padding: 2px 8px; border-radius: 5px; font-size: 11.5px; font-weight: 600;
-    background: rgba(212,168,67,0.16); border: 1px solid var(--border-gold);
-    color: var(--gold-light); cursor: pointer; font-family: inherit;
-  }
-  .inh-add-btn:hover { background: rgba(212,168,67,0.32); }
-
   .sk-editor-card {
     background: var(--card); border: 1px solid var(--border); border-radius: 10px;
     padding: 16px; margin-bottom: 14px;
   }
   .sk-editor-head {
-    display: flex; justify-content: space-between; align-items: center; gap: 8px;
-    flex-wrap: wrap; margin-bottom: 10px; padding-bottom: 8px;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px;
+    margin-bottom: 10px; padding-bottom: 8px;
     border-bottom: 1px solid rgba(65,82,118,0.4);
   }
+  .sk-editor-title { min-width: 0; }
+  .sk-editor-actions { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+  .sk-editor-actions .db-btn, .sk-editor-actions .icon-btn { white-space: nowrap; }
   .obtain-row {
-    display: grid; grid-template-columns: 56px 150px 92px 1fr auto 36px; gap: 7px;
+    display: grid; grid-template-columns: 56px 150px 92px minmax(120px, 1fr) auto 76px; gap: 7px;
     align-items: center; margin-bottom: 8px;
   }
+  .obt-row-actions { display: flex; justify-content: flex-end; gap: 5px; }
+  .obt-row-actions .icon-btn { width: 34px; min-height: 34px; padding: 5px; }
+  .obt-add-btn {
+    background: rgba(63,200,249,0.1); border: 1px solid rgba(63,200,249,0.35);
+    color: var(--accent); border-radius: 6px; width: 34px; min-height: 34px;
+    cursor: pointer; font-size: 16px; font-family: inherit;
+  }
+  .obt-add-btn:hover { background: rgba(63,200,249,0.24); }
+  .skill-editor-tools {
+    position: sticky; top: 68px; z-index: 20; display: flex; gap: 10px; align-items: center;
+    padding: 10px; margin-bottom: 14px; background: rgba(15,23,42,0.97);
+    border: 1px solid var(--border); border-radius: 10px; backdrop-filter: blur(8px);
+  }
+  .skill-editor-tools input { flex: 1; min-width: 0; }
+  .inherited-editor-jump { cursor: pointer; }
+  .inherited-editor-jump:hover { border-color: var(--accent); }
   @media (max-width: 780px) {
-    .obtain-row { grid-template-columns: 56px 1fr 90px; }
+    .sk-editor-head { grid-template-columns: 1fr; }
+    .sk-editor-actions { justify-content: flex-start; }
+    .obtain-row { grid-template-columns: 52px minmax(0, 1fr) 82px 74px; }
     .obtain-row .obt-loc { grid-column: 1 / -1; }
-    .obtain-row .obt-detail-btn { grid-column: 1 / 3; }
+    .obtain-row .obt-detail-btn, .obtain-row .obt-detail-placeholder { grid-column: 2 / 4; }
+  }
+  @media (max-width: 780px) {
+    .skill-editor-tools { top: 56px; }
   }
   .obt-lv-pill {
     font-size: 11.5px; font-weight: 700; text-align: center;
@@ -81,6 +98,7 @@
     font-size: 13px; font-family: inherit;
   }
   .icon-btn:hover { background: rgba(248,113,113,0.28); }
+  .icon-btn:disabled { opacity: .45; cursor: not-allowed; }
 
   .picker-modal-list {
     max-height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;
@@ -206,7 +224,6 @@
         <strong style="color:var(--accent);font-size:14.5px">🔗 สกิลที่สืบทอดมาอัตโนมัติ (ไม่ต้องพิมพ์ซ้ำ!)</strong>
         <div style="font-size:12.5px;color:var(--text-dim)" id="inh-summary">เลือกอาชีพก่อนหน้าด้านบนเพื่อสืบทอดสกิลอัตโนมัติ</div>
       </div>
-      <button type="button" class="db-btn secondary" onclick="autoCleanDuplicates()" title="ตัดสกิลและเลเวลที่ซ้ำกับอาชีพก่อนหน้าออกให้เหลือเฉพาะของใหม่">🧹 ลบสกิล/เลเวลซ้ำกับอาชีพก่อนหน้า</button>
     </div>
     <div class="inh-list" id="inh-list"></div>
   </div>
@@ -214,6 +231,10 @@
   <!-- Section 3: Inherited and class-specific skills editor -->
   <div class="db-panel">
     <h3 style="color:var(--gold-light);font-size:16px;margin-bottom:14px">2. กรอกข้อมูลสกิลของอาชีพนี้</h3>
+    <div class="skill-editor-tools">
+      <input class="db-input" id="skill-editor-search" type="search" placeholder="🔎 ค้นหาชื่อสกิลหรือ ID เพื่อกรอกได้เร็วขึ้น" oninput="filterEditorSkills(this.value)">
+      <span class="badge" id="skill-editor-count"></span>
+    </div>
     <div style="padding:14px;border:1px solid rgba(139,92,246,0.3);border-radius:12px;margin-bottom:16px">
       <div style="margin-bottom:12px">
         <h4 style="color:var(--accent);font-size:14px">สกิลสืบทอดจากอาชีพก่อนหน้า</h4>
@@ -635,6 +656,7 @@ let CURRENT_JOB_KEY = '';
 let CURRENT_JOB_BASE = null;
 let INHERITED_SKILLS = new Map(); // skillId -> { obtain: [...], from: label }
 let EDITOR_SKILLS = []; // [{ skillId, obtain: [{ method, lv, loc }] }]
+let EDITOR_SKILL_ROWS = new Map();
 let SUB_SKILLS_DRAFT = []; // [{ name, type, req, desc }]
 let EDITING_SKILL_ID = '';
 let LINK_MODAL_MODE = 'job';
@@ -694,7 +716,7 @@ function mergeObtainLists(parentList, childList) {
         out.push({ ...childList[i] });
       }
     }
-    return out;
+    return out.slice(0, childList.length);
   }
 
   for (const rawEntry of childList) {
@@ -732,18 +754,27 @@ async function resolveParentChain(parentKey, visited = new Set()) {
   for (const gp of parents) {
     const gpMap = await resolveParentChain(gp, visited);
     for (const [sid, info] of gpMap.entries()) {
-      map.set(sid, { obtain: [...info.obtain], from: info.from });
+      map.set(sid, {
+        obtain: [...info.obtain],
+        from: info.from,
+        maxSkillLevel: info.maxSkillLevel ?? null,
+        replaceObtain: Boolean(info.replaceObtain),
+      });
     }
   }
 
   const label = pJob.name || (meta ? meta.label : norm);
   for (const s of (pJob.skills || [])) {
     if (!s.skillId) continue;
-    if (!map.has(s.skillId)) {
-      map.set(s.skillId, { obtain: [...(s.obtain || [])], from: label });
+    if (s.replaceObtain) {
+      map.set(s.skillId, { obtain: [...(s.obtain || [])], from: label, maxSkillLevel: s.maxSkillLevel ?? null, replaceObtain: true });
+    } else if (!map.has(s.skillId)) {
+      map.set(s.skillId, { obtain: [...(s.obtain || [])], from: label, maxSkillLevel: s.maxSkillLevel ?? null, replaceObtain: false });
     } else {
       const cur = map.get(s.skillId);
       cur.obtain = mergeObtainLists(cur.obtain, s.obtain || []);
+      if (s.maxSkillLevel != null) cur.maxSkillLevel = s.maxSkillLevel;
+      cur.replaceObtain = Boolean(cur.replaceObtain || s.replaceObtain);
     }
   }
   return map;
@@ -827,6 +858,7 @@ async function loadSelectedJob(key) {
   }));
 
   await refreshInherited();
+  initializeEditorSkillRows();
   renderEditorSkills();
   updateObtainPreview();
 }
@@ -957,7 +989,33 @@ function updateObtainPreview() {
 
 async function onInheritChange() {
   await refreshInherited();
+  initializeEditorSkillRows();
   renderEditorSkills();
+}
+
+function initializeEditorSkillRows() {
+  const normalizeRows = rows => (rows || []).map(row => typeof row === 'object' && row
+    ? { method: row.method || 'เปลี่ยนอาชีพ', lv: row.lv ?? '', loc: row.loc || '' }
+    : { method: row || 'เปลี่ยนอาชีพ', lv: '', loc: '' });
+  EDITOR_SKILL_ROWS = new Map();
+  for (const [skillId, info] of INHERITED_SKILLS) {
+    const own = EDITOR_SKILLS.find(s => s.skillId === skillId);
+    EDITOR_SKILL_ROWS.set(skillId, {
+      obtain: normalizeRows(own?.replaceObtain
+        ? own.obtain.map(row => ({ ...row }))
+        : mergeObtainLists(info.obtain, own?.obtain || [])),
+      maxSkillLevel: own?.maxSkillLevel ?? info.maxSkillLevel ?? null,
+    });
+  }
+  for (const skill of EDITOR_SKILLS) {
+    if (!EDITOR_SKILL_ROWS.has(skill.skillId)) {
+      EDITOR_SKILL_ROWS.set(skill.skillId, {
+        obtain: normalizeRows(skill.obtain),
+        maxSkillLevel: skill.maxSkillLevel ?? null,
+      });
+    }
+  }
+  document.getElementById('skill-editor-search').value = '';
 }
 
 async function refreshInherited() {
@@ -978,134 +1036,155 @@ async function refreshInherited() {
     return;
   }
 
-  sumEl.textContent = `สืบทอดสกิลอัตโนมัติทั้งหมด ${INHERITED_SKILLS.size} สกิล จากสาย "${pMeta ? pMeta.label : parentKey}" — คุณไม่ต้องพิมพ์สกิลเหล่านี้ซ้ำ! หากอาชีพนี้มีเลเวลใหม่ของสกิลเดิม กดปุ่ม "+ เพิ่มเลเวลใหม่" ได้เลย`;
+  sumEl.textContent = `พบสกิลสืบทอด ${INHERITED_SKILLS.size} สกิลจาก "${pMeta ? pMeta.label : parentKey}" — เลื่อนลงไปแก้ทุกเลเวลได้ในส่วนสกิลสืบทอด`;
   listEl.innerHTML = Array.from(INHERITED_SKILLS.entries()).map(([sid, info]) => {
     const m = getSkillMeta(sid);
-    return `<div class="inh-chip">
-      <span>${DB.esc(m.name)} <span style="color:var(--text-dim);font-size:11.5px">(เดิม ${info.obtain.length} Lv)</span></span>
-      <button type="button" class="inh-add-btn" onclick="addUpgradeForInherited('${DB.esc(sid).replace(/'/g,"\\'")}')">+ เพิ่มเลเวลใหม่</button>
-    </div>`;
+    return `<button type="button" class="inh-chip inherited-editor-jump" onclick="focusEditorSkill('${DB.esc(sid).replace(/'/g,"\\'")}')">
+      <span>${DB.esc(m.name)} <span style="color:var(--text-dim);font-size:11.5px">(${info.obtain.length} Lv)</span></span>
+    </button>`;
   }).join('');
 }
 
-function addUpgradeForInherited(skillId) {
-  let existing = EDITOR_SKILLS.find(s => s.skillId === skillId);
-  if (!existing) {
-    existing = { skillId, obtain: [{ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' }] };
-    EDITOR_SKILLS.push(existing);
-  } else {
-    existing.obtain.push({ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' });
+function ensureEditableJobSkill(skillId) {
+  let skill = EDITOR_SKILLS.find(s => s.skillId === skillId);
+  if (!skill) {
+    skill = { skillId, obtain: [], maxSkillLevel: EDITOR_SKILL_ROWS.get(skillId)?.maxSkillLevel ?? null };
+    EDITOR_SKILLS.push(skill);
   }
-  renderEditorSkills();
-  showToast('เพิ่มช่องเลเวลใหม่สำหรับสกิล ' + getSkillMeta(skillId).name + ' แล้ว');
+  return skill;
 }
 
-function autoCleanDuplicates() {
-  if (INHERITED_SKILLS.size === 0) {
-    showToast('ยังไม่มีสกิลสืบทอดให้เปรียบเทียบ');
-    return;
+function setEditorSkillRow(skillId, rowIndex, field, value) {
+  const skill = EDITOR_SKILL_ROWS.get(skillId);
+  if (!skill || !skill.obtain[rowIndex]) return;
+  skill.obtain[rowIndex][field] = value;
+  ensureEditableJobSkill(skillId);
+  if (field === 'method') renderEditorSkills();
+  else updateJsonPreview();
+}
+
+function updateSkillLevelLimitById(skillId, input) {
+  const skill = EDITOR_SKILL_ROWS.get(skillId);
+  if (skill) updatePositiveLevel(skill, 'maxSkillLevel', input);
+  ensureEditableJobSkill(skillId);
+}
+
+function focusEditorSkill(skillId) {
+  const search = document.getElementById('skill-editor-search');
+  search.value = '';
+  filterEditorSkills('');
+  const card = document.getElementById(`skill-card-${skillId}`);
+  card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (card) {
+    card.style.outline = '2px solid var(--accent)';
+    setTimeout(() => { card.style.outline = ''; }, 1400);
   }
-  let removed = 0;
-  const cleaned = [];
-  for (const s of EDITOR_SKILLS) {
-    const inh = INHERITED_SKILLS.get(s.skillId);
-    if (!inh) {
-      cleaned.push(s);
-      continue;
-    }
-    const newObt = s.obtain.filter(e => {
-      const isDup = inh.obtain.some(ie => ie.method === e.method && String(ie.lv) === String(e.lv));
-      if (isDup) removed++;
-      return !isDup;
-    });
-    if (newObt.length > 0) cleaned.push({ ...s, obtain: newObt });
+}
+
+function filterEditorSkills(query) {
+  const term = String(query || '').trim().toLowerCase();
+  for (const card of document.querySelectorAll('.sk-editor-card')) {
+    card.hidden = Boolean(term) && !card.dataset.search.includes(term);
   }
-  EDITOR_SKILLS = cleaned;
-  renderEditorSkills();
-  showToast(removed > 0 ? `ตัดรายการซ้ำกับอาชีพก่อนหน้าออก ${removed} แถวเรียบร้อย!` : 'ไม่มีรายการซ้ำกับอาชีพก่อนหน้าแล้ว');
+  const visible = [...document.querySelectorAll('.sk-editor-card')].filter(card => !card.hidden).length;
+  document.getElementById('skill-editor-count').textContent = term ? `${visible} รายการ` : `${EDITOR_SKILL_ROWS.size} สกิล`;
 }
 
 function renderEditorSkills() {
   const inheritedWrap = document.getElementById('inherited-skill-editor-list');
   const classWrap = document.getElementById('class-skill-editor-list');
-  const inheritedSkills = EDITOR_SKILLS
-    .map((s, si) => ({ s, si }))
-    .filter(({ s }) => INHERITED_SKILLS.has(s.skillId));
+  const inheritedSkills = Array.from(INHERITED_SKILLS.keys())
+    .map(skillId => ({ skillId, s: EDITOR_SKILL_ROWS.get(skillId) }))
+    .filter(({ s }) => Boolean(s));
   const classSkills = EDITOR_SKILLS
-    .map((s, si) => ({ s, si }))
-    .filter(({ s }) => !INHERITED_SKILLS.has(s.skillId));
+    .filter(({ skillId }) => !INHERITED_SKILLS.has(skillId))
+    .map(s => ({ skillId: s.skillId, s: EDITOR_SKILL_ROWS.get(s.skillId) }));
 
-  const renderCards = skills => skills.map(({ s, si }) => {
-    const m = getSkillMeta(s.skillId);
-    const isInh = INHERITED_SKILLS.has(s.skillId);
-    const isNew = Boolean(NEW_SKILLS[s.skillId]);
+  const renderCards = skills => skills.map(({ skillId, s }) => {
+    const m = getSkillMeta(skillId);
+    const isInh = INHERITED_SKILLS.has(skillId);
+    const hasLocalSkill = EDITOR_SKILLS.some(skill => skill.skillId === skillId);
+    const isNew = Boolean(NEW_SKILLS[skillId]);
     const subCount = (m.summonSkills || []).length;
-    return `<div class="sk-editor-card">
+    const skillName = String(m.name || skillId);
+    return `<div class="sk-editor-card" id="skill-card-${DB.esc(skillId)}" data-search="${DB.esc(`${skillName} ${skillId}`.toLowerCase())}">
       <div class="sk-editor-head">
-        <div>
+        <div class="sk-editor-title">
           <strong style="color:var(--gold-light);font-size:15px">${DB.esc(m.name)}</strong>
-          <span class="badge" style="margin-left:6px">${DB.esc(s.skillId)}</span>
+          <span class="badge" style="margin-left:6px">${DB.esc(skillId)}</span>
           ${isInh ? `<span class="badge purple" style="margin-left:4px">อัปเกรดต่อจากสกิลสืบทอด</span>` : ''}
           ${isNew ? `<span class="badge green" style="margin-left:4px">สร้าง/แก้ไขข้อมูล</span>` : ''}
           ${subCount ? `<span class="badge purple" style="margin-left:4px">✦ ${subCount} สกิลย่อย</span>` : ''}
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button type="button" class="db-btn secondary" style="padding:4px 10px;font-size:12px" onclick="openEditSkillModal('${DB.esc(s.skillId).replace(/'/g,"\\'")}')">✏️ แก้รายละเอียด / สกิลย่อย</button>
-          <button type="button" class="db-btn secondary" style="padding:4px 10px;font-size:12px" onclick="addObtainRow(${si})">+ เพิ่มเลเวล</button>
-          <button type="button" class="icon-btn" onclick="removeSkill(${si})" title="ลบสกิลนี้">🗑️ ลบ</button>
+        <div class="sk-editor-actions">
+          <button type="button" class="db-btn secondary" style="padding:5px 10px;font-size:12px" onclick="openEditSkillModal('${DB.esc(skillId).replace(/'/g,"\\'")}')">✏️ แก้รายละเอียด</button>
+          <button type="button" class="icon-btn" onclick="removeSkillById('${DB.esc(skillId).replace(/'/g,"\\'")}')" title="${isInh ? (hasLocalSkill ? 'ลบข้อมูลเฉพาะคลาสและกลับไปใช้ข้อมูลสืบทอด' : 'ไม่มีข้อมูลเฉพาะคลาสให้ลบ') : 'ลบสกิลนี้'}" ${isInh && !hasLocalSkill ? 'disabled' : ''}>🗑️ ${isInh ? 'ลบข้อมูลคลาส' : 'ลบ'}</button>
         </div>
       </div>
       ${m.desc ? `<div style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">${m.desc.replace(/<br\s*\/?>/gi, ' · ').replace(/<[^>]+>/g, '')}</div>` : ''}
       ${subCount ? `<div class="field" style="max-width:320px;margin-bottom:12px">
         <label>เลเวลสกิลสูงสุดในอาชีพนี้ (ใช้กรองเลเวลและสกิลย่อย)</label>
-        <input class="db-input skill-level-limit" type="number" min="1" step="1" placeholder="ไม่จำกัด" value="${s.maxSkillLevel == null ? '' : DB.esc(s.maxSkillLevel)}" oninput="updateSkillLevelLimit(${si}, this)">
+        <input class="db-input skill-level-limit" type="number" min="1" step="1" placeholder="ไม่จำกัด" value="${s.maxSkillLevel == null ? '' : DB.esc(s.maxSkillLevel)}" oninput="updateSkillLevelLimitById('${DB.esc(skillId)}', this)">
       </div>` : ''}
+      ${!s.obtain.length ? `<button type="button" class="db-btn secondary" onclick="addObtainRow('${DB.esc(skillId)}',-1)">＋ เพิ่มเลเวลแรก</button>` : ''}
       ${s.obtain.map((o, oi) => {
-        const inh = INHERITED_SKILLS.get(s.skillId);
-        // Compute effective skill Lv (1-based) considering whether child starts from parent Lv.1 or appends
-        let baseOffset = 0;
-        if (inh && inh.obtain.length && s.obtain.length) {
-          const p0 = inh.obtain[0];
-          const c0 = s.obtain[0];
-          const isFull = p0 && c0 && p0.method === c0.method && String(p0.lv) === String(c0.lv) && String(p0.lv) !== '';
-          if (!isFull) baseOffset = inh.obtain.length;
-        }
-        const skillLvNum = baseOffset + oi + 1;
+        const skillLvNum = oi + 1;
         const folder = methodToFolder(o.method);
-        const odKey = folder ? `${folder}/${s.skillId}_${skillLvNum}.json` : '';
+        const odKey = folder ? `${folder}/${skillId}_${skillLvNum}.json` : '';
         const hasOd = odKey && Boolean(OBTAIN_DETAILS[odKey]);
         return `
         <div class="obtain-row">
           <span class="obt-lv-pill">Lv.${skillLvNum}</span>
-          <select class="db-select" style="padding:7px 8px;font-size:13px" onchange="EDITOR_SKILLS[${si}].obtain[${oi}].method=this.value; renderEditorSkills()">
+          <select class="db-select" style="padding:7px 8px;font-size:13px" onchange="setEditorSkillRow('${DB.esc(skillId)}',${oi},'method',this.value)">
             ${OBTAIN_METHODS.map(mt => `<option value="${mt}" ${o.method === mt ? 'selected' : ''}>${mt}</option>`).join('')}
           </select>
-          <input class="db-input" style="min-width:0;padding:7px 8px;font-size:13px" type="number" placeholder="Lv.ตัวละคร" value="${DB.esc(o.lv)}" oninput="EDITOR_SKILLS[${si}].obtain[${oi}].lv=this.value ? Number(this.value) : ''; updateJsonPreview()">
-          <input class="db-input obt-loc" style="min-width:0;padding:7px 10px;font-size:13px" type="text" placeholder="สถานที่ / NPC / ชื่อเควสต์ / ไอเทมดรอป" value="${DB.esc(o.loc)}" oninput="EDITOR_SKILLS[${si}].obtain[${oi}].loc=this.value; updateJsonPreview()">
-          ${folder ? `<button type="button" class="db-btn ${hasOd ? '' : 'secondary'} obt-detail-btn" style="padding:6px 9px;font-size:12px;white-space:nowrap" onclick="openObtainDetailModal('${DB.esc(s.skillId).replace(/'/g,"\\'")}', ${skillLvNum}, '${DB.esc(o.method)}', false)">${hasOd ? '✅ แก้เงื่อนไข' : '📋 กรอกเงื่อนไข'}</button>` : `<span></span>`}
-          <button type="button" class="icon-btn" onclick="removeObtainRow(${si},${oi})" title="ลบแถวนี้">✕</button>
+          <input class="db-input" style="min-width:0;padding:7px 8px;font-size:13px" type="number" placeholder="Lv.ตัวละคร" value="${DB.esc(o.lv)}" oninput="setEditorSkillRow('${DB.esc(skillId)}',${oi},'lv',this.value ? Number(this.value) : '')">
+          <input class="db-input obt-loc" style="min-width:0;padding:7px 10px;font-size:13px" type="text" placeholder="สถานที่ / NPC / ชื่อเควสต์ / ไอเทมดรอป" value="${DB.esc(o.loc)}" oninput="setEditorSkillRow('${DB.esc(skillId)}',${oi},'loc',this.value)">
+          ${folder ? `<button type="button" class="db-btn ${hasOd ? '' : 'secondary'} obt-detail-btn" style="padding:6px 9px;font-size:12px;white-space:nowrap" onclick="openObtainDetailModal('${DB.esc(skillId).replace(/'/g,"\\'")}', ${skillLvNum}, '${DB.esc(o.method)}', false)">${hasOd ? '✅ แก้เงื่อนไข' : '📋 กรอกเงื่อนไข'}</button>` : `<span class="obt-detail-placeholder"></span>`}
+          <div class="obt-row-actions">
+            <button type="button" class="obt-add-btn" onclick="addObtainRow('${DB.esc(skillId)}',${oi})" title="เพิ่มเลเวลถัดจากบรรทัดนี้">＋</button>
+            <button type="button" class="icon-btn" onclick="removeObtainRow('${DB.esc(skillId)}',${oi})" title="ลบแถวนี้">✕</button>
+          </div>
         </div>`;
       }).join('')}
     </div>`;
   }).join('');
   inheritedWrap.innerHTML = renderCards(inheritedSkills) ||
-    `<div class="empty-state" style="padding:18px">ยังไม่มีการเพิ่มเลเวลใหม่ของสกิลสืบทอด เลือกสกิลจากรายการด้านบนแล้วกด “+ เพิ่มเลเวลใหม่” ได้เลย</div>`;
+    `<div class="empty-state" style="padding:18px">อาชีพนี้ไม่มีสกิลสืบทอด</div>`;
   classWrap.innerHTML = renderCards(classSkills) ||
     `<div class="empty-state" style="padding:18px">ยังไม่มีสกิลประจำคลาส กด “🔍 + เลือกสกิลที่มีอยู่แล้ว” หรือ “✨ + สร้างสกิลใหม่” เพื่อเพิ่มข้อมูล</div>`;
+  filterEditorSkills(document.getElementById('skill-editor-search').value);
   updateJsonPreview();
 }
 
-function addObtainRow(si) {
-  EDITOR_SKILLS[si].obtain.push({ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' });
+function addObtainRow(skillId, afterIndex) {
+  const skill = EDITOR_SKILL_ROWS.get(skillId);
+  if (!skill) return;
+  skill.obtain.splice(afterIndex + 1, 0, { method: 'เปลี่ยนอาชีพ', lv: '', loc: '' });
+  ensureEditableJobSkill(skillId);
   renderEditorSkills();
+  focusEditorSkill(skillId);
 }
-function removeObtainRow(si, oi) {
-  EDITOR_SKILLS[si].obtain.splice(oi, 1);
-  if (EDITOR_SKILLS[si].obtain.length === 0) EDITOR_SKILLS.splice(si, 1);
+function removeObtainRow(skillId, rowIndex) {
+  const skill = EDITOR_SKILL_ROWS.get(skillId);
+  if (!skill) return;
+  skill.obtain.splice(rowIndex, 1);
+  ensureEditableJobSkill(skillId);
   renderEditorSkills();
+  focusEditorSkill(skillId);
 }
-function removeSkill(si) {
-  EDITOR_SKILLS.splice(si, 1);
+function removeSkillById(skillId) {
+  EDITOR_SKILLS = EDITOR_SKILLS.filter(s => s.skillId !== skillId);
+  if (INHERITED_SKILLS.has(skillId)) {
+    const inherited = INHERITED_SKILLS.get(skillId);
+    EDITOR_SKILL_ROWS.set(skillId, {
+      obtain: inherited.obtain.map(row => ({ ...row })),
+      maxSkillLevel: inherited.maxSkillLevel ?? null,
+    });
+    showToast(`ลบข้อมูลเฉพาะคลาสของ ${getSkillMeta(skillId).name} แล้ว; เลเวลสืบทอดยังคงอยู่`);
+  } else {
+    EDITOR_SKILL_ROWS.delete(skillId);
+  }
   renderEditorSkills();
 }
 
@@ -1135,13 +1214,14 @@ function renderSkillPicker() {
 }
 function pickExistingSkill(skillId) {
   closeModal('skill-picker-modal');
-  let ex = EDITOR_SKILLS.find(s => s.skillId === skillId);
-  if (!ex) {
-    EDITOR_SKILLS.push({ skillId, obtain: [{ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' }] });
-  } else {
-    ex.obtain.push({ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' });
+  if (!EDITOR_SKILL_ROWS.has(skillId)) {
+    EDITOR_SKILL_ROWS.set(skillId, { obtain: [], maxSkillLevel: null });
   }
+  const rows = EDITOR_SKILL_ROWS.get(skillId).obtain;
+  rows.push({ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' });
+  ensureEditableJobSkill(skillId);
   renderEditorSkills();
+  focusEditorSkill(skillId);
   showToast('เพิ่มสกิล ' + getSkillMeta(skillId).name + ' แล้ว');
 }
 
@@ -1215,10 +1295,6 @@ function updatePositiveLevel(target, key, input) {
   input.setCustomValidity('');
   target[key] = level;
   updateJsonPreview();
-}
-
-function updateSkillLevelLimit(skillIndex, input) {
-  updatePositiveLevel(EDITOR_SKILLS[skillIndex], 'maxSkillLevel', input);
 }
 
 function updateSubSkillLevelLimit(subSkillIndex, input) {
@@ -1308,11 +1384,15 @@ function saveNewSkill() {
   skillObj.summonSkills = cleanSubs;
 
   NEW_SKILLS[rawId] = skillObj;
-  if (!EDITOR_SKILLS.some(s => s.skillId === rawId)) {
-    EDITOR_SKILLS.push({ skillId: rawId, obtain: [{ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' }] });
+  if (!EDITOR_SKILL_ROWS.has(rawId)) {
+    EDITOR_SKILL_ROWS.set(rawId, { obtain: [{ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' }], maxSkillLevel: null });
+  } else if (!EDITOR_SKILL_ROWS.get(rawId).obtain.length) {
+    EDITOR_SKILL_ROWS.get(rawId).obtain.push({ method: 'เปลี่ยนอาชีพ', lv: '', loc: '' });
   }
+  ensureEditableJobSkill(rawId);
   closeModal('new-skill-modal');
   renderEditorSkills();
+  focusEditorSkill(rawId);
   showToast((EDITING_SKILL_ID ? 'อัปเดตสกิล "' : 'สร้างสกิลใหม่ "') + name + '" เรียบร้อย!');
 }
 
@@ -1351,20 +1431,22 @@ function buildPayload() {
   const removedSkills = Array.from(baselineSkills.keys()).filter(id => !currentIds.has(id));
   const skillPatches = EDITOR_SKILLS.flatMap(s => {
     const original = baselineSkills.get(s.skillId);
-    const obtainRows = s.obtain.map(o => ({
+    const inherited = INHERITED_SKILLS.get(s.skillId);
+    const editorState = EDITOR_SKILL_ROWS.get(s.skillId) || s;
+    const obtainRows = editorState.obtain.map(o => ({
       method: o.method,
       lv: o.lv === '' ? 0 : Number(o.lv),
       loc: o.loc.trim(),
     }));
-    const currentCap = Number.isInteger(s.maxSkillLevel) && s.maxSkillLevel > 0 ? s.maxSkillLevel : null;
-    if (!original) {
+    const currentCap = Number.isInteger(editorState.maxSkillLevel) && editorState.maxSkillLevel > 0 ? editorState.maxSkillLevel : null;
+    if (!original && !inherited) {
       const newSkill = { skillId: s.skillId, lv: obtainRows.map(o => o.lv), obtain: obtainRows };
       if (currentCap) newSkill.maxSkillLevel = currentCap;
       return [newSkill];
     }
 
     const changed = { skillId: s.skillId };
-    const originalRows = (original.obtain || []).map(o => ({
+    const originalRows = (original?.replaceObtain ? original.obtain || [] : mergeObtainLists(inherited?.obtain || [], original?.obtain || [])).map(o => ({
       method: o.method || 'เปลี่ยนอาชีพ',
       lv: o.lv == null ? 0 : Number(o.lv),
       loc: (o.loc || '').trim(),
@@ -1372,8 +1454,10 @@ function buildPayload() {
     if (JSON.stringify(obtainRows) !== JSON.stringify(originalRows)) {
       changed.obtain = obtainRows;
       changed.lv = obtainRows.map(o => o.lv);
+      changed.replaceObtain = true;
     }
-    const originalCap = original.maxSkillLevel == null ? null : Number(original.maxSkillLevel);
+    const originalCapValue = original?.maxSkillLevel ?? inherited?.maxSkillLevel ?? null;
+    const originalCap = originalCapValue == null ? null : Number(originalCapValue);
     if (currentCap !== originalCap) changed.maxSkillLevel = currentCap;
     return Object.keys(changed).length > 1 ? [changed] : [];
   });
@@ -1440,16 +1524,18 @@ function buildCompleteJobData() {
     desc: document.getElementById('job-desc').value.trim(),
     obtain: document.getElementById('job-obtain').value.trim(),
     skills: EDITOR_SKILLS.map(s => {
+      const editorState = EDITOR_SKILL_ROWS.get(s.skillId) || s;
       const skill = {
         skillId: s.skillId,
-        lv: s.obtain.map(o => o.lv === '' ? 0 : Number(o.lv)),
-        obtain: s.obtain.map(o => ({
+        lv: editorState.obtain.map(o => o.lv === '' ? 0 : Number(o.lv)),
+        obtain: editorState.obtain.map(o => ({
           method: o.method,
           lv: o.lv === '' ? 0 : Number(o.lv),
           loc: o.loc.trim(),
         })),
       };
-      if (Number.isInteger(s.maxSkillLevel) && s.maxSkillLevel > 0) skill.maxSkillLevel = s.maxSkillLevel;
+      if (INHERITED_SKILLS.has(s.skillId)) skill.replaceObtain = true;
+      if (Number.isInteger(editorState.maxSkillLevel) && editorState.maxSkillLevel > 0) skill.maxSkillLevel = editorState.maxSkillLevel;
       else delete skill.maxSkillLevel;
       return skill;
     }),

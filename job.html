@@ -439,11 +439,13 @@ async function resolveInheritedSkills(job, currentKey, visited = new Set()) {
           obtain: [...(ps.obtain || [])],
           maxSkillLevel: ps.maxSkillLevel || null,
           inheritedFrom: ps.inheritedFrom || parentLabel,
+          replaceObtain: Boolean(ps.replaceObtain),
         });
       } else {
         const cur = skillMap.get(sid);
-        cur.obtain = mergeObtainLists(cur.obtain, ps.obtain || []);
+        cur.obtain = ps.replaceObtain ? [...(ps.obtain || [])] : mergeObtainLists(cur.obtain, ps.obtain || []);
         cur.maxSkillLevel = ps.maxSkillLevel || cur.maxSkillLevel;
+        if (ps.replaceObtain) cur.replaceObtain = true;
       }
     }
   }
@@ -457,11 +459,13 @@ async function resolveInheritedSkills(job, currentKey, visited = new Set()) {
         obtain: [...(s.obtain || [])],
         maxSkillLevel: s.maxSkillLevel || null,
         inheritedFrom: null,
+        replaceObtain: Boolean(s.replaceObtain),
       });
     } else {
       const cur = skillMap.get(sid);
-      cur.obtain = mergeObtainLists(cur.obtain, s.obtain || []);
+      cur.obtain = s.replaceObtain ? [...(s.obtain || [])] : mergeObtainLists(cur.obtain, s.obtain || []);
       if (s.maxSkillLevel != null) cur.maxSkillLevel = s.maxSkillLevel;
+      if (s.replaceObtain) cur.replaceObtain = true;
     }
   }
 
