@@ -145,5 +145,314 @@
       "count": 0
     }
   ],
-  "attrFilters": []
+  "attrFilters": [
+    {
+      "key": "atk",
+      "label": "ATK (โจมตีกายภาพ)"
+    },
+    {
+      "key": "matk",
+      "label": "MATK (โจมตีเวท)"
+    },
+    {
+      "key": "def",
+      "label": "DEF (ป้องกันกายภาพ)"
+    },
+    {
+      "key": "mdef",
+      "label": "MDEF (ป้องกันเวท)"
+    },
+    {
+      "key": "str",
+      "label": "STR"
+    },
+    {
+      "key": "int",
+      "label": "INT"
+    },
+    {
+      "key": "vit",
+      "label": "VIT"
+    },
+    {
+      "key": "agi",
+      "label": "AGI"
+    },
+    {
+      "key": "dex",
+      "label": "DEX"
+    },
+    {
+      "key": "crt",
+      "label": "CRT"
+    },
+    {
+      "key": "maxhp",
+      "label": "MaxHP"
+    },
+    {
+      "key": "maxmp",
+      "label": "MaxMP"
+    },
+    {
+      "key": "criticalrate",
+      "label": "อัตราคริติคอล"
+    },
+    {
+      "key": "criticaldamage",
+      "label": "ดาเมจคริติคอล"
+    },
+    {
+      "key": "autoskill",
+      "label": "ติดออโต้สกิล"
+    },
+    {
+      "key": "spellburst",
+      "label": "สเปลเบิร์สต์"
+    },
+    {
+      "key": "skilldelay",
+      "label": "ดีเลย์สกิล"
+    },
+    {
+      "key": "itemdelay",
+      "label": "ดีเลย์ไอเทม"
+    },
+    {
+      "key": "casttime",
+      "label": "เวลาร่ายเวท"
+    },
+    {
+      "key": "aspd",
+      "label": "ความเร็วโจมตี (ASPD)"
+    },
+    {
+      "key": "mpcost",
+      "label": "การใช้ MP"
+    },
+    {
+      "key": "meleer",
+      "label": "ต้านกายภาพ"
+    },
+    {
+      "key": "magicr",
+      "label": "ต้านเวท"
+    },
+    {
+      "key": "alldamager",
+      "label": "ต้านดาเมจทั้งหมด"
+    },
+    {
+      "key": "ratecut",
+      "label": "ลดดาเมจ % (Rate Cut)"
+    },
+    {
+      "key": "rangecut",
+      "label": "ลดดาเมจระยะไกล"
+    },
+    {
+      "key": "damagecut",
+      "label": "ลดดาเมจคงที่"
+    },
+    {
+      "key": "meleepierce",
+      "label": "เจาะเกราะกายภาพ"
+    },
+    {
+      "key": "magicpierce",
+      "label": "เจาะเกราะเวท"
+    },
+    {
+      "key": "shellbreak",
+      "label": "อัตราเจาะเกราะ (Shell Break)"
+    },
+    {
+      "key": "accuracy",
+      "label": "ความแม่นยำ"
+    },
+    {
+      "key": "absoluteaccuracy",
+      "label": "แม่นยำสัมบูรณ์"
+    },
+    {
+      "key": "evasion",
+      "label": "หลบหลีก"
+    },
+    {
+      "key": "absoluteevasion",
+      "label": "หลบหลีกสัมบูรณ์"
+    },
+    {
+      "key": "magicevasion",
+      "label": "หลบหลีกเวท"
+    },
+    {
+      "key": "haterise",
+      "label": "ค่าเกลียดชัง (Hate)"
+    },
+    {
+      "key": "ailmentr",
+      "label": "ต้านสถานะผิดปกติ"
+    },
+    {
+      "key": "castdefense",
+      "label": "ป้องกันขณะร่าย"
+    },
+    {
+      "key": "healrecovery",
+      "label": "เพิ่มพลังฮีล"
+    },
+    {
+      "key": "healreward",
+      "label": "รับฮีลแรงขึ้น"
+    },
+    {
+      "key": "itemrecovery",
+      "label": "ผลฟื้นฟูจากไอเทม"
+    },
+    {
+      "key": "autohprecovery",
+      "label": "ฟื้นฟู HP อัตโนมัติ"
+    },
+    {
+      "key": "automprecovery",
+      "label": "ฟื้นฟู MP อัตโนมัติ"
+    },
+    {
+      "key": "reflect",
+      "label": "สะท้อนดาเมจ"
+    },
+    {
+      "key": "counteronevasion",
+      "label": "สวนกลับเมื่อหลบได้"
+    },
+    {
+      "key": "range",
+      "label": "ระยะโจมตี"
+    },
+    {
+      "key": "meleeboss",
+      "label": "โจมตีบอส (กายภาพ)"
+    },
+    {
+      "key": "magicboss",
+      "label": "โจมตีบอส (เวท)"
+    },
+    {
+      "key": "meleetofire",
+      "label": "กายภาพต่อธาตุไฟ"
+    },
+    {
+      "key": "meleetowater",
+      "label": "กายภาพต่อธาตุน้ำ"
+    },
+    {
+      "key": "meleetowind",
+      "label": "กายภาพต่อธาตุลม"
+    },
+    {
+      "key": "meleetoearth",
+      "label": "กายภาพต่อธาตุดิน"
+    },
+    {
+      "key": "meleetolight",
+      "label": "กายภาพต่อธาตุแสง"
+    },
+    {
+      "key": "meleetodark",
+      "label": "กายภาพต่อธาตุมืด"
+    },
+    {
+      "key": "meleetoneutral",
+      "label": "กายภาพต่อไร้ธาตุ"
+    },
+    {
+      "key": "firemagic",
+      "label": "เวทธาตุไฟ"
+    },
+    {
+      "key": "watermagic",
+      "label": "เวทธาตุน้ำ"
+    },
+    {
+      "key": "windmagic",
+      "label": "เวทธาตุลม"
+    },
+    {
+      "key": "earthmagic",
+      "label": "เวทธาตุดิน"
+    },
+    {
+      "key": "lightmagic",
+      "label": "เวทธาตุแสง"
+    },
+    {
+      "key": "darkmagic",
+      "label": "เวทธาตุมืด"
+    },
+    {
+      "key": "neutralmagic",
+      "label": "เวทไร้ธาตุ"
+    },
+    {
+      "key": "firer",
+      "label": "ต้านธาตุไฟ"
+    },
+    {
+      "key": "waterr",
+      "label": "ต้านธาตุน้ำ"
+    },
+    {
+      "key": "windr",
+      "label": "ต้านธาตุลม"
+    },
+    {
+      "key": "earthr",
+      "label": "ต้านธาตุดิน"
+    },
+    {
+      "key": "lightr",
+      "label": "ต้านธาตุแสง"
+    },
+    {
+      "key": "darkr",
+      "label": "ต้านธาตุมืด"
+    },
+    {
+      "key": "neutralr",
+      "label": "ต้านไร้ธาตุ"
+    },
+    {
+      "key": "exp",
+      "label": "เพิ่ม EXP"
+    },
+    {
+      "key": "drop",
+      "label": "เพิ่มอัตราดรอป"
+    },
+    {
+      "key": "pet",
+      "label": "เกี่ยวกับสัตว์เลี้ยง"
+    },
+    {
+      "key": "poison",
+      "label": "พิษ (Poison)"
+    },
+    {
+      "key": "paralysis",
+      "label": "อัมพาต (Paralysis)"
+    },
+    {
+      "key": "bleed",
+      "label": "เลือดไหล (Bleed)"
+    },
+    {
+      "key": "burn",
+      "label": "เผาไหม้ (Burn)"
+    },
+    {
+      "key": "knockout",
+      "label": "มึนงง/สตั๊น"
+    }
+  ]
 }

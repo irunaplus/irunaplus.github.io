@@ -102,8 +102,8 @@
             <a class="badge" href="db_items.html?cat=${encodeURIComponent(fullItem.cat)}&q=${encodeURIComponent(fullItem.name)}">เปิดในหมวด ${this.esc(fullItem.cat)}</a>
           </div>`;
           if (fullItem.ds) html += `<div class="stat-th">${this.esc(fullItem.ds)}</div>`;
-          if (fullItem.tds) html += `<div class="stat-en"><strong>True Stats:</strong> ${this.esc(fullItem.tds)}</div>`;
-          if (fullItem.notes) html += `<div class="stat-notes"><strong>Notes:</strong> ${this.esc(fullItem.notes)}</div>`;
+          if (fullItem.tds) html += `<div class="stat-en"><strong>สเตตัสจริง:</strong> ${this.esc(fullItem.tds)}</div>`;
+          if (fullItem.notes) html += `<div class="stat-notes"><strong>หมายเหตุ:</strong> ${this.esc(fullItem.notes)}</div>`;
         } else {
           html += `<p style="color:var(--text-dim);font-size:13px;">ไม่พบรายละเอียดสเตตัสในรายการหลัก (อาจเป็นไอเทมเฉพาะเควสต์/ดรอป)</p>`;
         }

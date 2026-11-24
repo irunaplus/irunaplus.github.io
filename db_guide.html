@@ -94,12 +94,13 @@ function renderStaticGuide(data) {
 function renderClasses(data) {
   const initCls = DB.qs('class') || '';
   const list = data.classList || [];
+  const labels = data.classLabels || {};
   document.getElementById('sub-toolbar').innerHTML = `
     <div class="db-panel">
       <div style="font-size:12.5px;color:var(--gold);margin-bottom:8px;font-weight:700">เลือกอาชีพเพื่อดูเงื่อนไขการเปลี่ยนอาชีพและสกิล:</div>
       <div class="chip-wrap" id="cls-chips">
         <button class="chip ${!initCls ? 'active' : ''}" onclick="showClass('', this)">🌳 ผังสายอาชีพทั้งหมด</button>
-        ${list.map(c => `<button class="chip ${initCls === c ? 'active' : ''}" onclick="showClass('${DB.esc(c).replace(/'/g,"\\'")}', this)">${DB.esc(c)}</button>`).join('')}
+        ${list.map(c => `<button class="chip ${initCls === c ? 'active' : ''}" onclick="showClass('${DB.esc(c).replace(/'/g,"\\'")}', this)">${DB.esc(labels[c] || c)}</button>`).join('')}
       </div>
     </div>`;
 
@@ -109,7 +110,7 @@ function renderClasses(data) {
       btn.classList.add('active');
     }
     const html = cls && data.details[cls]
-      ? `<h2 style="margin-top:0">${DB.esc(cls)}</h2>${data.details[cls]}`
+      ? `<h2 style="margin-top:0">${DB.esc(labels[cls] || cls)}</h2>${data.details[cls]}`
       : data.treeHtml;
     document.getElementById('guide-body').innerHTML = `<div class="guide-content">${html || '<p>ไม่มีข้อมูล</p>'}</div>`;
   };
@@ -118,17 +119,18 @@ function renderClasses(data) {
 
 function renderSkills(data) {
   const list = data.classList || [];
+  const labels = data.classLabels || {};
   const initCls = (DB.qs('class') && data.byClass[DB.qs('class')]) ? DB.qs('class') : (list[0] || '');
   document.getElementById('sub-toolbar').innerHTML = `
     <div class="db-panel">
       <div class="db-controls">
         <select class="db-select" id="sk-class-sel" onchange="showSkillClass(this.value)">
-          ${list.map(c => `<option value="${DB.esc(c)}" ${c === initCls ? 'selected' : ''}>${DB.esc(c)}</option>`).join('')}
+          ${list.map(c => `<option value="${DB.esc(c)}" ${c === initCls ? 'selected' : ''}>${DB.esc(labels[c] || c)}</option>`).join('')}
         </select>
         <input class="db-input" id="sk-filter" type="text" placeholder="ค้นหาชื่อสกิลหรือคำอธิบาย...">
       </div>
       <div class="chip-wrap" id="sk-chips" style="margin-top:10px">
-        ${list.map(c => `<button class="chip ${c === initCls ? 'active' : ''}" onclick="selectSkillChip('${DB.esc(c).replace(/'/g,"\\'")}')">${DB.esc(c)}</button>`).join('')}
+        ${list.map(c => `<button class="chip ${c === initCls ? 'active' : ''}" data-cls="${DB.esc(c)}" onclick="selectSkillChip('${DB.esc(c).replace(/'/g,"\\'")}')">${DB.esc(labels[c] || c)}</button>`).join('')}
       </div>
     </div>`;
 
@@ -137,9 +139,9 @@ function renderSkills(data) {
     showSkillClass(cls);
   };
   window.showSkillClass = function (cls) {
-    document.querySelectorAll('#sk-chips .chip').forEach(c => c.classList.toggle('active', c.textContent === cls));
+    document.querySelectorAll('#sk-chips .chip').forEach(c => c.classList.toggle('active', c.dataset.cls === cls));
     const html = data.byClass[cls] || '<p>ไม่มีข้อมูลสกิล</p>';
-    document.getElementById('guide-body').innerHTML = `<div class="guide-content" id="sk-html"><h2 style="margin-top:0">✨ สกิลอาชีพ: ${DB.esc(cls)}</h2>${html}</div>`;
+    document.getElementById('guide-body').innerHTML = `<div class="guide-content" id="sk-html"><h2 style="margin-top:0">✨ สกิลอาชีพ: ${DB.esc(labels[cls] || cls)}</h2>${html}</div>`;
     applySkillFilter();
   };
   function applySkillFilter() {
