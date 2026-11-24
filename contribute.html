@@ -57,12 +57,23 @@
     border-bottom: 1px solid rgba(65,82,118,0.4);
   }
   .obtain-row {
-    display: grid; grid-template-columns: 155px 95px 1fr 36px; gap: 8px;
+    display: grid; grid-template-columns: 56px 150px 92px 1fr auto 36px; gap: 7px;
     align-items: center; margin-bottom: 8px;
   }
-  @media (max-width: 720px) {
-    .obtain-row { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 780px) {
+    .obtain-row { grid-template-columns: 56px 1fr 90px; }
     .obtain-row .obt-loc { grid-column: 1 / -1; }
+    .obtain-row .obt-detail-btn { grid-column: 1 / 3; }
+  }
+  .obt-lv-pill {
+    font-size: 11.5px; font-weight: 700; text-align: center;
+    padding: 5px 4px; border-radius: 6px;
+    background: rgba(212,168,67,0.14); border: 1px solid rgba(212,168,67,0.38);
+    color: var(--gold-light);
+  }
+  .cond-row {
+    display: grid; grid-template-columns: 145px 1fr 34px; gap: 6px;
+    align-items: center; margin-top: 6px;
   }
   .icon-btn {
     background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.35);
@@ -340,6 +351,108 @@
   </div>
 </div>
 
+<!-- Obtain Detail Modal (Quest / Drop / Shop conditions — No JSON needed!) -->
+<div class="db-modal-backdrop" id="obtain-detail-modal">
+  <div class="db-modal">
+    <div class="db-modal-head">
+      <h3 id="od-title">📋 รายละเอียดวิธีทำสกิล</h3>
+      <button class="db-modal-close" onclick="closeModal('obtain-detail-modal')">✕</button>
+    </div>
+    <div class="db-modal-body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" id="od-meta-badges"></div>
+
+      <!-- Quest fields -->
+      <div id="od-quest-fields" style="display:none">
+        <div class="field">
+          <label>ชื่อเควสต์ *</label>
+          <input class="db-input" id="od-q-name" type="text" placeholder="เช่น ท่าไม้ตายของทิเรีย">
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>NPC รับเควสต์</label>
+            <input class="db-input" id="od-q-npc" type="text" placeholder="เช่น ทิเรีย">
+          </div>
+          <div class="field">
+            <label>สถานที่รับเควสต์</label>
+            <input class="db-input" id="od-q-loc" type="text" placeholder="เช่น ฐานทัพไบลุน">
+          </div>
+        </div>
+        <div class="sub-skill-box" style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <strong style="color:var(--gold-light);font-size:13px">🎯 เงื่อนไขเควสต์ (ล่ามอน / เก็บของ)</strong>
+            <button type="button" class="db-btn secondary" style="padding:4px 10px;font-size:12px" onclick="addQuestCondDraft()">+ เพิ่มเงื่อนไข</button>
+          </div>
+          <div id="od-q-conds"></div>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>NPC ส่งเควสต์ (ปล่อยว่างถ้าส่งคนเดิม)</label>
+            <input class="db-input" id="od-q-subnpc" type="text" placeholder="เช่น ทิเรีย">
+          </div>
+          <div class="field">
+            <label>สถานที่ส่งเควสต์</label>
+            <input class="db-input" id="od-q-subloc" type="text" placeholder="เช่น ฐานทัพไบลุน">
+          </div>
+        </div>
+      </div>
+
+      <!-- Drop fields -->
+      <div id="od-drop-fields" style="display:none">
+        <div class="field">
+          <label>ชื่อไอเทม / หนังสือสกิล *</label>
+          <input class="db-input" id="od-d-item" type="text" placeholder="เช่น วิชาโจมตีสองขั้น III">
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>มอนสเตอร์ที่ดรอป *</label>
+            <input class="db-input" id="od-d-mob" type="text" placeholder="เช่น ดรากิสต์">
+          </div>
+          <div class="field">
+            <label>แผนที่</label>
+            <input class="db-input" id="od-d-loc" type="text" placeholder="เช่น ช่องลมโลโคโค">
+          </div>
+        </div>
+        <div class="field">
+          <label>อัตราดรอป / หมายเหตุ (ไม่บังคับ)</label>
+          <input class="db-input" id="od-d-rate" type="text" placeholder="เช่น ดรอปช่องที่ 4 (Rare)">
+        </div>
+      </div>
+
+      <!-- Shop fields -->
+      <div id="od-shop-fields" style="display:none">
+        <div class="field">
+          <label>ชื่อไอเทมสกิล / ชื่อร้านค้า *</label>
+          <input class="db-input" id="od-s-name" type="text" placeholder="เช่น คัมภีร์ไนท์โคลอน II (ร้านค้าเมือง...)">
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>สถานที่ / เมือง</label>
+            <input class="db-input" id="od-s-loc" type="text" placeholder="เช่น มหานครเออร์แบน">
+          </div>
+          <div class="field">
+            <label>ราคา (Spina / เหรียญ)</label>
+            <input class="db-input" id="od-s-price" type="text" placeholder="เช่น 500,000 Spina">
+          </div>
+        </div>
+        <div class="field">
+          <label>เงื่อนไขเพิ่มเติม / หมายเหตุ</label>
+          <input class="db-input" id="od-s-note" type="text" placeholder="เช่น ต้องมีเลเวล 140 ขึ้นไป">
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:8px">
+        <label>ลิงก์รูปภาพประกอบ (ไม่บังคับ)</label>
+        <input class="db-input" id="od-photo" type="text" placeholder="https://...">
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button type="button" class="btn-primary-big" style="flex:1" id="od-save-btn" onclick="saveObtainDetail(false)">✅ บันทึกเงื่อนไขนี้</button>
+        <button type="button" class="db-btn" id="od-submit-direct-btn" style="display:none" onclick="saveObtainDetail(true)">📤 ส่งขออนุมัติทันที (GitHub)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="db_common.js"></script>
@@ -408,6 +521,9 @@ let SKILLS_MASTER = {};
 let NPC_ID_MAP = {};
 let NEW_SKILLS = {};
 let NEW_NPCS = {};
+let OBTAIN_DETAILS = {}; // key "folder/skillId_lv.json" -> { folder, file, data }
+let OD_CTX = null; // { skillId, skillLv, folder, method, standalone }
+let OD_CONDS_DRAFT = [];
 let JOB_CACHE = {};
 let CURRENT_JOB_KEY = '';
 let INHERITED_SKILLS = new Map(); // skillId -> { obtain: [...], from: label }
@@ -556,6 +672,14 @@ async function init() {
   const matched = JOBS.find(j => j.key === qJob) || JOBS.find(j => j.key === 'paladin') || JOBS[0];
   jobSel.value = matched.key;
   await loadSelectedJob(matched.key);
+
+  // If opened directly from obtain.html ("✏️ ช่วยเพิ่ม/แก้ไขรายละเอียดวิธีทำสกิลนี้")
+  const obtSkill = DB.qs('obtainSkill');
+  const obtLv = DB.qs('obtainLv');
+  const obtType = DB.qs('obtainType');
+  if (obtSkill && obtLv) {
+    openObtainDetailModal(obtSkill, Number(obtLv) || 1, obtType || 'เควส', true);
+  }
 }
 
 async function loadSelectedJob(key) {
@@ -811,16 +935,32 @@ function renderEditorSkills() {
         </div>
       </div>
       ${m.desc ? `<div style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">${m.desc.replace(/<br\s*\/?>/gi, ' · ').replace(/<[^>]+>/g, '')}</div>` : ''}
-      ${s.obtain.map((o, oi) => `
+      ${s.obtain.map((o, oi) => {
+        const inh = INHERITED_SKILLS.get(s.skillId);
+        // Compute effective skill Lv (1-based) considering whether child starts from parent Lv.1 or appends
+        let baseOffset = 0;
+        if (inh && inh.obtain.length && s.obtain.length) {
+          const p0 = inh.obtain[0];
+          const c0 = s.obtain[0];
+          const isFull = p0 && c0 && p0.method === c0.method && String(p0.lv) === String(c0.lv) && String(p0.lv) !== '';
+          if (!isFull) baseOffset = inh.obtain.length;
+        }
+        const skillLvNum = baseOffset + oi + 1;
+        const folder = methodToFolder(o.method);
+        const odKey = folder ? `${folder}/${s.skillId}_${skillLvNum}.json` : '';
+        const hasOd = odKey && Boolean(OBTAIN_DETAILS[odKey]);
+        return `
         <div class="obtain-row">
-          <select class="db-select" style="padding:7px 8px;font-size:13px" onchange="EDITOR_SKILLS[${si}].obtain[${oi}].method=this.value; updateJsonPreview()">
+          <span class="obt-lv-pill">Lv.${skillLvNum}</span>
+          <select class="db-select" style="padding:7px 8px;font-size:13px" onchange="EDITOR_SKILLS[${si}].obtain[${oi}].method=this.value; renderEditorSkills()">
             ${OBTAIN_METHODS.map(mt => `<option value="${mt}" ${o.method === mt ? 'selected' : ''}>${mt}</option>`).join('')}
           </select>
           <input class="db-input" style="min-width:0;padding:7px 8px;font-size:13px" type="number" placeholder="Lv.ตัวละคร" value="${DB.esc(o.lv)}" oninput="EDITOR_SKILLS[${si}].obtain[${oi}].lv=this.value ? Number(this.value) : ''; updateJsonPreview()">
           <input class="db-input obt-loc" style="min-width:0;padding:7px 10px;font-size:13px" type="text" placeholder="สถานที่ / NPC / ชื่อเควสต์ / ไอเทมดรอป" value="${DB.esc(o.loc)}" oninput="EDITOR_SKILLS[${si}].obtain[${oi}].loc=this.value; updateJsonPreview()">
+          ${folder ? `<button type="button" class="db-btn ${hasOd ? '' : 'secondary'} obt-detail-btn" style="padding:6px 9px;font-size:12px;white-space:nowrap" onclick="openObtainDetailModal('${DB.esc(s.skillId).replace(/'/g,"\\'")}', ${skillLvNum}, '${DB.esc(o.method)}', false)">${hasOd ? '✅ แก้เงื่อนไข' : '📋 กรอกเงื่อนไข'}</button>` : `<span></span>`}
           <button type="button" class="icon-btn" onclick="removeObtainRow(${si},${oi})" title="ลบแถวนี้">✕</button>
-        </div>
-      `).join('')}
+        </div>`;
+      }).join('')}
     </div>`;
   }).join('');
   updateJsonPreview();
@@ -1041,7 +1181,152 @@ function buildPayload() {
     newSkills: usedNewSkills,
   };
   if (Object.keys(NEW_NPCS).length) payload.newNpcs = NEW_NPCS;
+  const odArr = Object.values(OBTAIN_DETAILS);
+  if (odArr.length) payload.obtainDetails = odArr;
   return payload;
+}
+
+/* Obtain Detail Modal Logic (Quest / Drop / Shop) */
+function methodToFolder(method) {
+  if (method === 'เควส' || method === 'เควสต์') return 'quest';
+  if (method === 'ไอเทมดรอป') return 'drop';
+  if (method === 'ไอเทมซื้อร้านค้า') return 'shop';
+  return '';
+}
+
+function renderQuestCondsDraft() {
+  const box = document.getElementById('od-q-conds');
+  if (!OD_CONDS_DRAFT.length) {
+    box.innerHTML = `<div style="font-size:12px;color:var(--text-dim);margin-top:6px">กด "+ เพิ่มเงื่อนไข" เพื่อเพิ่มมอนสเตอร์ที่ต้องล่า หรือไอเทมที่ต้องเก็บ</div>`;
+    return;
+  }
+  box.innerHTML = OD_CONDS_DRAFT.map((c, idx) => `
+    <div class="cond-row">
+      <select class="db-select" style="padding:6px 8px;font-size:12.5px" onchange="OD_CONDS_DRAFT[${idx}].type=this.value">
+        <option value="kill" ${c.type === 'kill' ? 'selected' : ''}>⚔ ล่ามอนสเตอร์</option>
+        <option value="collect" ${c.type === 'collect' ? 'selected' : ''}>🎒 เก็บไอเทม</option>
+      </select>
+      <input class="db-input" style="min-width:0;padding:6px 8px;font-size:12.5px" type="text" placeholder="เช่น ก็อบลิน x20 หรือ ลูกไม้ x15" value="${DB.esc(c.text)}" oninput="OD_CONDS_DRAFT[${idx}].text=this.value">
+      <button type="button" class="icon-btn" onclick="OD_CONDS_DRAFT.splice(${idx},1);renderQuestCondsDraft()">✕</button>
+    </div>
+  `).join('');
+}
+
+function addQuestCondDraft() {
+  OD_CONDS_DRAFT.push({ type: 'kill', text: '' });
+  renderQuestCondsDraft();
+}
+
+async function openObtainDetailModal(skillId, skillLv, method, standalone) {
+  const folder = methodToFolder(method) || 'quest';
+  const file = `${skillId.toLowerCase()}_${skillLv}.json`;
+  const key = `${folder}/${file}`;
+  OD_CTX = { skillId: skillId.toLowerCase(), skillLv, folder, method, file, key, standalone: Boolean(standalone) };
+
+  const m = getSkillMeta(skillId);
+  document.getElementById('od-title').textContent = `📋 เงื่อนไขวิธีทำสกิล: ${m.name || skillId} Lv.${skillLv}`;
+  document.getElementById('od-meta-badges').innerHTML = `
+    <span class="badge gold">${DB.esc(m.name || skillId)}</span>
+    <span class="badge">สกิล Lv.${skillLv}</span>
+    <span class="badge purple">${DB.esc(method)}</span>
+  `;
+
+  document.getElementById('od-quest-fields').style.display = folder === 'quest' ? 'block' : 'none';
+  document.getElementById('od-drop-fields').style.display = folder === 'drop' ? 'block' : 'none';
+  document.getElementById('od-shop-fields').style.display = folder === 'shop' ? 'block' : 'none';
+  document.getElementById('od-submit-direct-btn').style.display = standalone ? 'inline-flex' : 'none';
+  document.getElementById('od-save-btn').textContent = standalone ? '📋 คัดลอกส่ง Discord' : '✅ บันทึกแนบไปพร้อมฟอร์มอาชีพ';
+
+  // Load existing data (from unsaved draft first, else fetch existing JSON)
+  let existing = OBTAIN_DETAILS[key]?.data || null;
+  if (!existing) {
+    try {
+      const r = await fetch(`./data/obtain/${folder}/${file}`);
+      if (r.ok) existing = await r.json();
+    } catch (_) {}
+  }
+  existing = existing || {};
+
+  document.getElementById('od-photo').value = existing.photo || '';
+  if (folder === 'quest') {
+    document.getElementById('od-q-name').value = existing.questName || '';
+    document.getElementById('od-q-npc').value = existing.npcName || '';
+    document.getElementById('od-q-loc').value = existing.location || '';
+    document.getElementById('od-q-subnpc').value = existing.submitNpc || '';
+    document.getElementById('od-q-subloc').value = existing.submitLocation || '';
+    OD_CONDS_DRAFT = (existing.conditions || []).map(c => ({ type: c.type || 'kill', text: c.text || '' }));
+    renderQuestCondsDraft();
+  } else if (folder === 'drop') {
+    document.getElementById('od-d-item').value = existing.itemName || '';
+    document.getElementById('od-d-mob').value = existing.monster || '';
+    document.getElementById('od-d-loc').value = existing.location || '';
+    document.getElementById('od-d-rate').value = existing.dropRate || '';
+  } else {
+    document.getElementById('od-s-name').value = existing.shopName || '';
+    document.getElementById('od-s-loc').value = existing.location || '';
+    document.getElementById('od-s-price').value = existing.price || '';
+    document.getElementById('od-s-note').value = existing.note || '';
+  }
+
+  document.getElementById('obtain-detail-modal').classList.add('open');
+}
+
+function saveObtainDetail(submitDirectGitHub) {
+  if (!OD_CTX) return;
+  const { skillId, skillLv, folder, method, file, key, standalone } = OD_CTX;
+  const photo = document.getElementById('od-photo').value.trim() || null;
+  let data = { skillId, lv: skillLv };
+
+  if (folder === 'quest') {
+    data.questName = document.getElementById('od-q-name').value.trim();
+    data.npcName = document.getElementById('od-q-npc').value.trim();
+    data.location = document.getElementById('od-q-loc').value.trim();
+    data.conditions = OD_CONDS_DRAFT.filter(c => c.text.trim()).map(c => ({ type: c.type, text: c.text.trim() }));
+    data.submitNpc = document.getElementById('od-q-subnpc').value.trim() || data.npcName;
+    data.submitLocation = document.getElementById('od-q-subloc').value.trim() || data.location;
+    data.photo = photo;
+  } else if (folder === 'drop') {
+    data.itemName = document.getElementById('od-d-item').value.trim();
+    data.monster = document.getElementById('od-d-mob').value.trim();
+    data.location = document.getElementById('od-d-loc').value.trim();
+    data.dropRate = document.getElementById('od-d-rate').value.trim() || null;
+    data.photo = photo;
+  } else {
+    data.shopName = document.getElementById('od-s-name').value.trim();
+    data.location = document.getElementById('od-s-loc').value.trim();
+    data.price = document.getElementById('od-s-price').value.trim();
+    data.note = document.getElementById('od-s-note').value.trim();
+    data.photo = photo;
+  }
+
+  const entry = { folder, file, data };
+  OBTAIN_DETAILS[key] = entry;
+  closeModal('obtain-detail-modal');
+  renderEditorSkills();
+
+  if (standalone) {
+    const m = getSkillMeta(skillId);
+    const payload = { type: 'obtain_update', obtainDetails: [entry] };
+    const title = `[เสนอเงื่อนไขทำสกิล] ${m.name || skillId} Lv.${skillLv} (${method})`;
+    const md = [
+      `## 📋 คำขออัปเดตรายละเอียดวิธีทำสกิล: ${m.name || skillId} Lv.${skillLv}`,
+      `- **วิธีได้รับ:** ${method}`,
+      `- **ไฟล์เป้าหมาย:** \`data/obtain/${folder}/${file}\``,
+      '',
+      '```json',
+      JSON.stringify(payload, null, 2),
+      '```',
+    ].join('\n');
+    if (submitDirectGitHub) {
+      window.open(`https://github.com/${GITHUB_REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(md)}`, '_blank', 'noopener');
+    } else {
+      navigator.clipboard?.writeText(md).catch(() => {});
+      showToast('คัดลอกเงื่อนไขสกิลแล้ว! กำลังเปิด Discord...');
+      window.open(DISCORD_INVITE_URL, '_blank', 'noopener');
+    }
+  } else {
+    showToast(`บันทึกเงื่อนไข ${getSkillMeta(skillId).name} Lv.${skillLv} แล้ว!`);
+  }
 }
 
 function buildIssueMarkdown() {
@@ -1064,6 +1349,9 @@ function buildIssueMarkdown() {
   const newNpcDetails = Object.entries(payload.newNpcs || {}).map(([id, n]) =>
     `- 📍 **${n.name}** (\`${id}\`)${n.location ? ' — สถานที่: ' + n.location : ''}${n.image ? ' · มีรูปภาพ' : ''}${n.desc ? ' · ' + n.desc : ''}`
   ).join('\n');
+  const obtDetailsText = (payload.obtainDetails || []).map(o =>
+    `- 📋 \`data/obtain/${o.folder}/${o.file}\` (${o.data.questName || o.data.itemName || o.data.shopName || 'รายละเอียด'})`
+  ).join('\n');
   return [
     `## 📝 คำขออัปเดตข้อมูลอาชีพ: ${payload.job.name}`,
     `- **ผู้ส่งข้อมูล:** ${contributor}`,
@@ -1077,6 +1365,7 @@ function buildIssueMarkdown() {
     skillSummary,
     newSkillDetails ? '\n### ✨ รายละเอียดสกิลใหม่ / ประเภทสกิลที่เพิ่ม\n' + newSkillDetails : '',
     newNpcDetails ? '\n### 📍 NPC ใหม่ที่ขอเพิ่ม\n' + newNpcDetails : '',
+    obtDetailsText ? '\n### 📋 รายละเอียดเงื่อนไขวิธีทำสกิล\n' + obtDetailsText : '',
     '',
     '```json',
     JSON.stringify(payload, null, 2),

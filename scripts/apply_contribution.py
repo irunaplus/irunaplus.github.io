@@ -19,8 +19,10 @@ JOBS_DIR = REPO_ROOT / "data" / "jobs"
 SKILLS_FILE = REPO_ROOT / "data" / "skills.json"
 NPC_DIR = REPO_ROOT / "data" / "NPC"
 NPC_MAP_FILE = NPC_DIR / "npc_id_map.json"
+OBTAIN_DIR = REPO_ROOT / "data" / "obtain"
 
 ALLOWED_FILENAME_RE = re.compile(r"^[a-z0-9_]+\.json$")
+ALLOWED_OBTAIN_FOLDERS = {"quest", "drop", "shop"}
 
 
 def extract_json_block(text: str) -> dict:
@@ -35,25 +37,27 @@ def main():
     body = os.environ.get("ISSUE_BODY", "")
     payload = extract_json_block(body)
 
-    if payload.get("type") != "job_update":
-        raise ValueError(f"Unsupported contribution type: {payload.get('type')}")
+    ptype = payload.get("type")
+    if ptype not in ("job_update", "obtain_update"):
+        raise ValueError(f"Unsupported contribution type: {ptype}")
 
-    filename = str(payload.get("file", "")).strip()
-    if not ALLOWED_FILENAME_RE.match(filename):
-        raise ValueError(f"Invalid job filename: {filename!r}")
+    if ptype == "job_update":
+        filename = str(payload.get("file", "")).strip()
+        if not ALLOWED_FILENAME_RE.match(filename):
+            raise ValueError(f"Invalid job filename: {filename!r}")
 
-    job_obj = payload.get("job")
-    if not isinstance(job_obj, dict) or not job_obj.get("jobId") or not job_obj.get("name"):
-        raise ValueError("Missing required job fields (jobId, name)")
+        job_obj = payload.get("job")
+        if not isinstance(job_obj, dict) or not job_obj.get("jobId") or not job_obj.get("name"):
+            raise ValueError("Missing required job fields (jobId, name)")
 
-    # Write job JSON
-    JOBS_DIR.mkdir(parents=True, exist_ok=True)
-    target_job = JOBS_DIR / filename
-    target_job.write_text(
-        json.dumps(job_obj, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    print(f"Updated {target_job.relative_to(REPO_ROOT)}")
+        # Write job JSON
+        JOBS_DIR.mkdir(parents=True, exist_ok=True)
+        target_job = JOBS_DIR / filename
+        target_job.write_text(
+            json.dumps(job_obj, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        print(f"Updated {target_job.relative_to(REPO_ROOT)}")
 
     # Merge any new skills into data/skills.json (without overwriting existing skills accidentally)
     new_skills = payload.get("newSkills") or {}
@@ -140,6 +144,33 @@ def main():
                 encoding="utf-8",
             )
             print(f"Merged {len(added_npcs)} NPC(s) into data/NPC/: {added_npcs}")
+
+    # Write any detailed obtain condition files (data/obtain/{quest,drop,shop}/<skill>_<lv>.json)
+    obtain_details = payload.get("obtainDetails") or []
+    if isinstance(obtain_details, list) and obtain_details:
+        saved_obt = []
+        for entry in obtain_details:
+            if not isinstance(entry, dict):
+                continue
+            folder = str(entry.get("folder", "")).strip().lower()
+            fname = str(entry.get("file", "")).strip().lower()
+            data = entry.get("data")
+            if folder not in ALLOWED_OBTAIN_FOLDERS:
+                continue
+            if not ALLOWED_FILENAME_RE.match(fname):
+                continue
+            if not isinstance(data, dict):
+                continue
+            target_dir = OBTAIN_DIR / folder
+            target_dir.mkdir(parents=True, exist_ok=True)
+            target_file = target_dir / fname
+            target_file.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            saved_obt.append(f"{folder}/{fname}")
+        if saved_obt:
+            print(f"Saved {len(saved_obt)} obtain detail file(s): {saved_obt}")
 
 
 if __name__ == "__main__":

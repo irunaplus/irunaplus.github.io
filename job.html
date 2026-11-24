@@ -588,7 +588,9 @@ function buildLevels(obtain, skillId) {
   const activeLevel  = filterState.level;
   const rows = obtain.map((entry, i) => {
     const rowObtain = (typeof entry === 'object' ? entry.method : entry) || '';
-    const charLv    = String(typeof entry === 'object' ? entry.lv : '').trim();
+    const rawLvVal  = (typeof entry === 'object' && entry && entry.lv != null) ? entry.lv : '';
+    const charLv    = String(rawLvVal).trim();
+    const lvText    = (charLv && charLv.toLowerCase() !== 'null') ? `ตัวละคร Lv.${charLv}` : 'รอระบุเลเวล';
     const locRaw    = (typeof entry === 'object' ? entry.loc  : '') || '';
     if (activeObtain !== 'all' && rowObtain !== activeObtain) return '';
     /* filter by level band */
@@ -610,14 +612,14 @@ function buildLevels(obtain, skillId) {
     const isClickable = clickableTypes.includes(rowObtain);
     if (isClickable) {
       const url = `obtain.html?skill=${encodeURIComponent(skillId)}&lv=${skillLv}&clv=${encodeURIComponent(charLv)}&type=${encodeURIComponent(rowObtain)}`;
-      return `<a href="${url}" target="_blank" class="skill-lv-row clickable" title="คลิกเพื่อดูลายละเอียดวิธีการได้สกิลนี้">
+      return `<a href="${url}" target="_blank" class="skill-lv-row clickable" title="คลิกเพื่อดูรายละเอียดวิธีการได้สกิลนี้">
         <span class="lv-badge">Lv.${skillLv}</span>
-        <span class="lv-loc">ตัวละคร Lv.${charLv} &nbsp;·&nbsp; ${locInfo}</span>
+        <span class="lv-loc">${lvText} &nbsp;·&nbsp; ${locInfo}</span>
       </a>`;
     } else {
       return `<div class="skill-lv-row">
         <span class="lv-badge">Lv.${skillLv}</span>
-        <span class="lv-loc">ตัวละคร Lv.${charLv} &nbsp;·&nbsp; ${locInfo}</span>
+        <span class="lv-loc">${lvText} &nbsp;·&nbsp; ${locInfo}</span>
       </div>`;
     }
   }).join('');

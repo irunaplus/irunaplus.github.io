@@ -546,7 +546,8 @@ async function renderObtainPage() {
   const type    = params.get('type')  || '';
   const skillId = params.get('skill') || '';
   const lvChar  = params.get('lv')    || '?';
-  const lvNum   = params.get('clv')   || '?';
+  const rawClv  = (params.get('clv')  || '').trim();
+  const lvNum   = (rawClv && rawClv.toLowerCase() !== 'null') ? rawClv : 'รอระบุ';
 
   const vp = document.getElementById('view-port');
 
@@ -577,11 +578,15 @@ async function renderObtainPage() {
     }</span>
   `;
 
-  /* ── Back btn ── */
-  const backBtn = `<a class="back-btn" onclick="history.back()">← กลับหน้าก่อนหน้า</a>`;
+  /* ── Back & Contribute btn ── */
+  const contribUrl = `contribute.html?obtainSkill=${encodeURIComponent(skillId)}&obtainLv=${encodeURIComponent(lvChar)}&obtainType=${encodeURIComponent(type || 'เควส')}`;
+  const topBar = `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:22px">
+    <a class="back-btn" style="margin-bottom:0" onclick="history.back()">← กลับหน้าก่อนหน้า</a>
+    ${skillId ? `<a class="back-btn" style="margin-bottom:0;border-color:rgba(63,200,249,0.45);color:var(--accent)" href="${contribUrl}">✏️ ช่วยเพิ่ม/แก้ไขรายละเอียดวิธีทำสกิลนี้</a>` : ''}
+  </div>`;
 
   if (!skillId) {
-    vp.innerHTML = `${backBtn}<div class="state-box"><div class="icon">🔍</div><h3>ไม่พบ ID สกิล</h3><p>กรุณาเข้าผ่านหน้ารายละเอียดสกิล</p></div>`;
+    vp.innerHTML = `${topBar}<div class="state-box"><div class="icon">🔍</div><h3>ไม่พบ ID สกิล</h3><p>กรุณาเข้าผ่านหน้ารายละเอียดสกิล</p></div>`;
     return;
   }
 
@@ -603,15 +608,15 @@ async function renderObtainPage() {
     section = `<div class="state-box">
       <div class="icon">🔍</div>
       <h3>ยังไม่มีข้อมูลรายละเอียด</h3>
-      <p>ไฟล์: <code style="opacity:.5;font-size:11px">${basePath}${skillId}.json</code></p>
-      <p style="margin-top:6px;font-size:12px;opacity:.5">กรุณารอการอัปเดต</p>
+      <p style="margin-top:8px">คุณสามารถช่วยกรอกข้อมูลวิธีทำสกิลนี้ได้ง่ายๆ โดยไม่ต้องเขียนโค้ด!</p>
+      <p style="margin-top:14px"><a class="back-btn" style="margin:0;border-color:var(--gold);color:var(--gold-light)" href="${contribUrl}">📝 ช่วยเพิ่มรายละเอียดวิธีทำสกิลนี้</a></p>
     </div>`;
   }
 
-  vp.innerHTML = `${backBtn}${section}`;
+  vp.innerHTML = `${topBar}${section}`;
 }
 
 document.addEventListener('DOMContentLoaded', renderObtainPage);
 </script>
 </body>
-</html>ห
+</html>
