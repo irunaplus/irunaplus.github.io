@@ -330,6 +330,7 @@
     },
     {
       "skillId": "baby_woof",
+      "maxSkillLevel": 2,
       "lv": [
         120,
         180

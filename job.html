@@ -328,6 +328,7 @@ function mergeSkills(jobSkills, master) {
       desc:          m.desc        || '',
       image:         m.image       || null,
       summonSkills:  m.summonSkills|| null,
+      maxSkillLevel: s.maxSkillLevel || null,
       lv:            s.obtain,   // obtain array carries lv per-entry
       obtain:        s.obtain,
       inheritedFrom: s.inheritedFrom || null,
@@ -436,11 +437,13 @@ async function resolveInheritedSkills(job, currentKey, visited = new Set()) {
         skillMap.set(sid, {
           skillId: sid,
           obtain: [...(ps.obtain || [])],
+          maxSkillLevel: ps.maxSkillLevel || null,
           inheritedFrom: ps.inheritedFrom || parentLabel,
         });
       } else {
         const cur = skillMap.get(sid);
         cur.obtain = mergeObtainLists(cur.obtain, ps.obtain || []);
+        cur.maxSkillLevel = ps.maxSkillLevel || cur.maxSkillLevel;
       }
     }
   }
@@ -452,11 +455,13 @@ async function resolveInheritedSkills(job, currentKey, visited = new Set()) {
       skillMap.set(sid, {
         skillId: sid,
         obtain: [...(s.obtain || [])],
+        maxSkillLevel: s.maxSkillLevel || null,
         inheritedFrom: null,
       });
     } else {
       const cur = skillMap.get(sid);
       cur.obtain = mergeObtainLists(cur.obtain, s.obtain || []);
+      if (s.maxSkillLevel != null) cur.maxSkillLevel = s.maxSkillLevel;
     }
   }
 
@@ -582,11 +587,14 @@ function renderLoc(locString) {
 
 /* ── level rows ── */
 // obtain is now array of {method, lv, loc}
-function buildLevels(obtain, skillId) {
+function buildLevels(obtain, skillId, maxSkillLevel) {
   if (!Array.isArray(obtain) || !obtain.length) return '';
   const activeObtain = filterState.obtain;
   const activeLevel  = filterState.level;
-  const rows = obtain.map((entry, i) => {
+  const visibleObtain = Number.isInteger(maxSkillLevel) && maxSkillLevel > 0
+    ? obtain.slice(0, maxSkillLevel)
+    : obtain;
+  const rows = visibleObtain.map((entry, i) => {
     const rowObtain = (typeof entry === 'object' ? entry.method : entry) || '';
     const rawLvVal  = (typeof entry === 'object' && entry && entry.lv != null) ? entry.lv : '';
     const charLv    = String(rawLvVal).trim();
@@ -626,9 +634,15 @@ function buildLevels(obtain, skillId) {
   return rows ? `<div class="skill-levels">${rows}</div>` : '';
 }
 
-function buildSummonBlock(summonSkills, isSummon) {
+function buildSummonBlock(summonSkills, isSummon, maxSkillLevel) {
   if (!summonSkills || summonSkills.length === 0) return '';
-  const rows = summonSkills.map(ss => `
+  const visibleSkills = summonSkills.filter(ss =>
+    !Number.isInteger(maxSkillLevel) ||
+    !Number.isInteger(ss.requiresSkillLevel) ||
+    ss.requiresSkillLevel <= maxSkillLevel
+  );
+  if (!visibleSkills.length) return '';
+  const rows = visibleSkills.map(ss => `
     <div class="summon-skill-row">
       ${ss.image
         ? `<img class="summon-skill-icon" src="${ss.image}" alt="">`
@@ -653,9 +667,12 @@ function buildSkillCard(s) {
   const types = normalizeTypes(s.type);       
   const typeStr = types.join(',').toLowerCase();
   const isSummon = typeStr.includes('summon') || typeStr.includes('อัญเชิญ');
-  const bands    = getLevelBands(s.obtain).join(',');
-  const obtain = Array.isArray(s.obtain)
-    ? s.obtain.map(o => (typeof o === 'object' ? o.method : o)).join(',')
+  const visibleObtain = Number.isInteger(s.maxSkillLevel) && s.maxSkillLevel > 0
+    ? s.obtain.slice(0, s.maxSkillLevel)
+    : s.obtain;
+  const bands    = getLevelBands(visibleObtain).join(',');
+  const obtain = Array.isArray(visibleObtain)
+    ? visibleObtain.map(o => (typeof o === 'object' ? o.method : o)).join(',')
     : (s.obtain ? String(s.obtain).trim() : '');
 
   return `<div class="skill-card" data-types="${typeStr}" data-levels="${bands}" data-obtain="${obtain}">
@@ -672,8 +689,8 @@ function buildSkillCard(s) {
       </div>
     </div>
     ${s.desc ? `<div class="skill-desc">${s.desc}</div>` : ''}
-    ${buildLevels(s.obtain, s.skillId)}
-    ${s.summonSkills && s.summonSkills.length ? buildSummonBlock(s.summonSkills, isSummon) : ''}
+    ${buildLevels(s.obtain, s.skillId, s.maxSkillLevel)}
+    ${s.summonSkills && s.summonSkills.length ? buildSummonBlock(s.summonSkills, isSummon, s.maxSkillLevel) : ''}
   </div>`;
 }
 
@@ -709,7 +726,7 @@ function applyFilters() {
     if (window._jobSkills && window._jobSkills[idx]) {
       const s = window._jobSkills[idx];
       const levelsEl = card.querySelector('.skill-levels');
-      const newLevels = buildLevels(s.obtain, s.skillId);
+      const newLevels = buildLevels(s.obtain, s.skillId, s.maxSkillLevel);
       if (levelsEl) {
         levelsEl.outerHTML = newLevels || '<div class="skill-levels"></div>';
       } else if (newLevels) {
@@ -729,10 +746,13 @@ function setupFilters(skills) {
   const obtains = new Set();
   skills.forEach(s => {
     normalizeTypes(s.type).forEach(t => types.add(t));
-    const bands = getLevelBands(s.obtain);
+    const visibleObtain = Number.isInteger(s.maxSkillLevel) && s.maxSkillLevel > 0
+      ? s.obtain.slice(0, s.maxSkillLevel)
+      : s.obtain;
+    const bands = getLevelBands(visibleObtain);
     bands.forEach(b => levels.add(b));
-    if (s.obtain) {
-      const vals = Array.isArray(s.obtain) ? s.obtain : [s.obtain];
+    if (visibleObtain) {
+      const vals = Array.isArray(visibleObtain) ? visibleObtain : [visibleObtain];
       vals.forEach(v => obtains.add((typeof v === 'object' ? v.method : v).trim()));
     }
   });

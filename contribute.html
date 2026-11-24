@@ -108,6 +108,15 @@
     background: rgba(212,168,67,0.06); border: 1px solid rgba(212,168,67,0.22);
     font-size: 13px; color: var(--text-dim); line-height: 1.65;
   }
+  .issue-body-fallback {
+    margin-top: 12px; padding: 12px; border-radius: 8px;
+    background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.35);
+  }
+  .issue-body-fallback textarea {
+    width: 100%; min-height: 160px; margin-top: 8px; padding: 9px;
+    border-radius: 6px; background: rgba(10,12,24,0.92); color: var(--text);
+    border: 1px solid var(--border); font: 12px monospace; resize: vertical;
+  }
   .obtain-preview a { color: var(--accent); text-decoration: underline; }
   .obtain-preview .pv-npc { color: var(--gold-light); border-bottom: 1px dashed var(--gold); }
   .sub-skill-box {
@@ -119,7 +128,7 @@
     border-radius: 8px; padding: 10px; margin-top: 8px;
     display: flex; flex-direction: column; gap: 7px;
   }
-  .sub-skill-top { display: grid; grid-template-columns: 1fr 140px 1fr 34px; gap: 6px; }
+  .sub-skill-top { display: grid; grid-template-columns: 1fr 140px 1fr 110px 34px; gap: 6px; }
   @media (max-width: 680px) { .sub-skill-top { grid-template-columns: 1fr 1fr; } }
   .submit-bar {
     display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px;
@@ -236,11 +245,21 @@
       <button type="button" class="db-btn secondary" onclick="downloadJson()">💾 ดาวน์โหลด JSON</button>
       <button type="button" class="db-btn secondary" onclick="toggleJsonPreview()">👁️ ดูตัวอย่าง JSON</button>
     </div>
+    <div class="issue-body-fallback" id="issue-body-fallback" style="display:none">
+      <strong style="color:#fca5a5">คัดลอกเนื้อหาคำขอไปวางใน GitHub Issue</strong>
+      <div style="font-size:12px;color:var(--text-dim);margin-top:4px">เบราว์เซอร์ไม่อนุญาตให้คัดลอกอัตโนมัติ เลือกข้อความด้านล่างแล้วคัดลอก</div>
+      <textarea id="issue-body-fallback-text" readonly></textarea>
+      <button type="button" class="db-btn secondary" onclick="copyIssueBodyFallback()">📋 คัดลอกเนื้อหา</button>
+    </div>
     <div id="json-preview-wrap" style="display:none;margin-top:12px">
       <pre id="json-preview" style="background:rgba(10,12,24,0.92);border:1px solid var(--border);border-radius:8px;padding:12px;overflow:auto;max-height:360px;font-size:12px;color:#93c5fd"></pre>
     </div>
   </div>
 </div>
+
+<datalist id="dl-zones"></datalist>
+<datalist id="dl-monsters"></datalist>
+<datalist id="dl-items"></datalist>
 
 <!-- Skill Picker Modal -->
 <div class="db-modal-backdrop" id="skill-picker-modal">
@@ -291,6 +310,7 @@
           <strong style="color:var(--purple);font-size:13.5px">✦ สกิลย่อย (เช่น สกิลของตัวอัญเชิญ / ท่าต่อเนื่อง — ถ้ามี)</strong>
           <button type="button" class="db-btn secondary" style="padding:4px 10px;font-size:12px" onclick="addSubSkillDraft()">+ เพิ่มสกิลย่อย</button>
         </div>
+        <div style="font-size:11.5px;color:var(--text-dim);margin-top:5px">กำหนดเลเวลขั้นต่ำเพื่อซ่อนสกิลย่อยจนกว่าจะปลดล็อก</div>
         <div id="ns-subskills-list"></div>
       </div>
 
@@ -374,7 +394,7 @@
           </div>
           <div class="field">
             <label>สถานที่รับเควสต์</label>
-            <input class="db-input" id="od-q-loc" type="text" placeholder="เช่น ฐานทัพไบลุน">
+            <input class="db-input" id="od-q-loc" type="text" list="dl-zones" placeholder="ค้นหาแผนที่ เช่น ฐานทัพไบลุน" oninput="updateOdRoutePreview(this.value)">
           </div>
         </div>
         <div class="sub-skill-box" style="margin-bottom:10px">
@@ -391,7 +411,7 @@
           </div>
           <div class="field">
             <label>สถานที่ส่งเควสต์</label>
-            <input class="db-input" id="od-q-subloc" type="text" placeholder="เช่น ฐานทัพไบลุน">
+            <input class="db-input" id="od-q-subloc" type="text" list="dl-zones" placeholder="ค้นหาแผนที่ เช่น ฐานทัพไบลุน">
           </div>
         </div>
       </div>
@@ -405,11 +425,11 @@
         <div class="form-grid">
           <div class="field">
             <label>มอนสเตอร์ที่ดรอป *</label>
-            <input class="db-input" id="od-d-mob" type="text" placeholder="เช่น ดรากิสต์">
+            <input class="db-input" id="od-d-mob" type="text" list="dl-monsters" placeholder="ค้นหามอนสเตอร์ เช่น ดรากิสต์" oninput="autoFillMonsterMap(this.value)">
           </div>
           <div class="field">
             <label>แผนที่</label>
-            <input class="db-input" id="od-d-loc" type="text" placeholder="เช่น ช่องลมโลโคโค">
+            <input class="db-input" id="od-d-loc" type="text" list="dl-zones" placeholder="ค้นหาแผนที่ เช่น ช่องลมโลโคโค" oninput="updateOdRoutePreview(this.value)">
           </div>
         </div>
         <div class="field">
@@ -427,7 +447,7 @@
         <div class="form-grid">
           <div class="field">
             <label>สถานที่ / เมือง</label>
-            <input class="db-input" id="od-s-loc" type="text" placeholder="เช่น มหานครเออร์แบน">
+            <input class="db-input" id="od-s-loc" type="text" list="dl-zones" placeholder="ค้นหาแผนที่ เช่น มหานครเออร์แบน" oninput="updateOdRoutePreview(this.value)">
           </div>
           <div class="field">
             <label>ราคา (Spina / เหรียญ)</label>
@@ -444,6 +464,11 @@
         <label>ลิงก์รูปภาพประกอบ (ไม่บังคับ)</label>
         <input class="db-input" id="od-photo" type="text" placeholder="https://...">
       </div>
+      <div class="field">
+        <label>หมายเหตุเส้นทาง / วิธีเดินทาง (ไม่บังคับ)</label>
+        <input class="db-input" id="od-route-note" type="text" placeholder="เช่น ใช้วาร์ปจากเมือง... แล้วเดินไปทางเหนือ">
+      </div>
+      <div class="obtain-preview" id="od-route-preview" style="display:none"></div>
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <button type="button" class="btn-primary-big" style="flex:1" id="od-save-btn" onclick="saveObtainDetail(false)">✅ บันทึกเงื่อนไขนี้</button>
@@ -522,10 +547,82 @@ let NPC_ID_MAP = {};
 let NEW_SKILLS = {};
 let NEW_NPCS = {};
 let OBTAIN_DETAILS = {}; // key "folder/skillId_lv.json" -> { folder, file, data }
+let OBTAIN_BASE_DATA = {}; // Original obtain records used to send only changed fields
 let OD_CTX = null; // { skillId, skillLv, folder, method, standalone }
 let OD_CONDS_DRAFT = [];
+let DB_ZONE_ROUTES = { routes: {}, byName: {} };
+let DB_SEARCH_IDX = { items: [], monsters: [], zones: [] };
+let _dbListsLoaded = false;
+
+async function ensureDbAutocompleteLists() {
+  if (_dbListsLoaded) return;
+  try {
+    const [zr, si] = await Promise.all([
+      fetch('./data/db/zone_routes.json').then(r => {
+        if (!r.ok) throw new Error(`zone routes request failed: ${r.status}`);
+        return r.json();
+      }),
+      fetch('./data/db/search_index.json').then(r => {
+        if (!r.ok) throw new Error(`search index request failed: ${r.status}`);
+        return r.json();
+      }),
+    ]);
+    DB_ZONE_ROUTES = zr;
+    DB_SEARCH_IDX = si;
+
+    const zNames = Array.from(new Set(Object.values(DB_ZONE_ROUTES.routes || {}).map(r => r.name))).sort();
+    document.getElementById('dl-zones').innerHTML = zNames.map(n => `<option value="${DB.esc(n)}">`).join('');
+
+    const mNames = Array.from(new Set((DB_SEARCH_IDX.monsters || []).map(m => m.n))).sort();
+    document.getElementById('dl-monsters').innerHTML = mNames.map(n => `<option value="${DB.esc(n)}">`).join('');
+    const iNames = Array.from(new Set((DB_SEARCH_IDX.items || []).map(i => i.n))).sort();
+    document.getElementById('dl-items').innerHTML = iNames.map(n => `<option value="${DB.esc(n)}">`).join('');
+    _dbListsLoaded = true;
+  } catch (error) {
+    showToast('โหลดรายการแผนที่/มอนสเตอร์ไม่สำเร็จ กรุณาลองใหม่');
+    throw error;
+  }
+}
+
+function autoFillMonsterMap(mobName) {
+  const q = (mobName || '').trim().toLowerCase();
+  if (!q) return;
+  const hit = (DB_SEARCH_IDX.monsters || []).find(m => m.n.toLowerCase() === q);
+  if (hit && hit.z) {
+    const locInp = document.getElementById('od-d-loc');
+    if (!locInp.value.trim()) {
+      locInp.value = hit.z;
+      updateOdRoutePreview(hit.z);
+    }
+  }
+}
+
+function updateOdRoutePreview(locText) {
+  const box = document.getElementById('od-route-preview');
+  const q = (locText || '').trim().toLowerCase();
+  if (!q) { box.style.display = 'none'; return; }
+  const slug = DB_ZONE_ROUTES.byName?.[q];
+  const r = slug ? DB_ZONE_ROUTES.routes[slug] : null;
+  if (!r) { box.style.display = 'none'; return; }
+  const steps = [];
+  const rootSlug = r.path && r.path.length ? r.path[0].slug : r.slug;
+  const rootInfo = DB_ZONE_ROUTES.routes[rootSlug] || r;
+  if (r.nearestTown && (!r.path || !r.path.some(x => x.slug === r.nearestTown.slug))) steps.push(r.nearestTown.name);
+  if (rootInfo.prev && !steps.includes(rootInfo.prev.name)) steps.push(rootInfo.prev.name);
+  for (const node of (r.path || [])) if (!steps.includes(node.name)) steps.push(node.name);
+  const routeHtml = steps.map(name => {
+    const stepSlug = DB_ZONE_ROUTES.byName[name.toLowerCase()];
+    const step = stepSlug && DB_ZONE_ROUTES.routes[stepSlug];
+    if (!step) return DB.esc(name);
+    const href = `db_zones.html?ep=${encodeURIComponent(step.ep)}&zone=${encodeURIComponent(step.slug)}`;
+    return `<a href="${href}" target="_blank" rel="noopener">${DB.esc(name)}</a>`;
+  }).join(' ➜ ');
+  box.innerHTML = `<strong style="color:var(--gold)">🧭 เส้นทางอัตโนมัติที่จะแสดงบนหน้าเว็บ:</strong><br>${routeHtml}`;
+  box.style.display = 'block';
+}
 let JOB_CACHE = {};
 let CURRENT_JOB_KEY = '';
+let CURRENT_JOB_BASE = null;
 let INHERITED_SKILLS = new Map(); // skillId -> { obtain: [...], from: label }
 let EDITOR_SKILLS = []; // [{ skillId, obtain: [{ method, lv, loc }] }]
 let SUB_SKILLS_DRAFT = []; // [{ name, type, req, desc }]
@@ -686,6 +783,18 @@ async function loadSelectedJob(key) {
   CURRENT_JOB_KEY = key;
   const meta = JOBS.find(j => j.key === key);
   const data = await fetchJobByKey(key);
+  CURRENT_JOB_BASE = data ? JSON.parse(JSON.stringify(data)) : {
+    jobId: key,
+    name: meta.label,
+    desc: '',
+    obtain: '',
+    inherits: [],
+    skills: [],
+  };
+  NEW_SKILLS = {};
+  NEW_NPCS = {};
+  OBTAIN_DETAILS = {};
+  OBTAIN_BASE_DATA = {};
 
   document.getElementById('job-name').value = (data && data.name) || meta.label;
   document.getElementById('job-desc').value = (data && data.desc) || '';
@@ -695,9 +804,11 @@ async function loadSelectedJob(key) {
     ? String(data.inherits[0]).toLowerCase()
     : (meta.defaultParent || '');
   document.getElementById('inherit-select').value = JOBS.some(j => j.key === parentVal) ? parentVal : '';
+  CURRENT_JOB_BASE.inherits = parentVal ? [parentVal] : [];
 
   EDITOR_SKILLS = ((data && data.skills) || []).map(s => ({
     skillId: s.skillId,
+    maxSkillLevel: s.maxSkillLevel ?? null,
     obtain: (s.obtain || []).map(o => ({
       method: o.method || 'เปลี่ยนอาชีพ',
       lv: o.lv != null ? o.lv : '',
@@ -897,7 +1008,7 @@ function autoCleanDuplicates() {
       if (isDup) removed++;
       return !isDup;
     });
-    if (newObt.length > 0) cleaned.push({ skillId: s.skillId, obtain: newObt });
+    if (newObt.length > 0) cleaned.push({ ...s, obtain: newObt });
   }
   EDITOR_SKILLS = cleaned;
   renderEditorSkills();
@@ -935,6 +1046,10 @@ function renderEditorSkills() {
         </div>
       </div>
       ${m.desc ? `<div style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">${m.desc.replace(/<br\s*\/?>/gi, ' · ').replace(/<[^>]+>/g, '')}</div>` : ''}
+      ${subCount ? `<div class="field" style="max-width:320px;margin-bottom:12px">
+        <label>เลเวลสกิลสูงสุดในอาชีพนี้ (ใช้กรองเลเวลและสกิลย่อย)</label>
+        <input class="db-input skill-level-limit" type="number" min="1" step="1" placeholder="ไม่จำกัด" value="${s.maxSkillLevel == null ? '' : DB.esc(s.maxSkillLevel)}" oninput="updateSkillLevelLimit(${si}, this)">
+      </div>` : ''}
       ${s.obtain.map((o, oi) => {
         const inh = INHERITED_SKILLS.get(s.skillId);
         // Compute effective skill Lv (1-based) considering whether child starts from parent Lv.1 or appends
@@ -1063,6 +1178,7 @@ function renderSubSkillsDraft() {
         <input class="db-input" style="min-width:0;padding:6px 8px;font-size:12.5px" type="text" placeholder="ชื่อสกิลย่อย *" value="${DB.esc(ss.name)}" oninput="SUB_SKILLS_DRAFT[${idx}].name=this.value">
         <input class="db-input" style="min-width:0;padding:6px 8px;font-size:12.5px" type="text" placeholder="ประเภท (เช่น โจมตีเดี่ยว)" value="${DB.esc(ss.type)}" oninput="SUB_SKILLS_DRAFT[${idx}].type=this.value">
         <input class="db-input" style="min-width:0;padding:6px 8px;font-size:12.5px" type="text" placeholder="เงื่อนไข (เช่น Lv.2 ขึ้นไป)" value="${DB.esc(ss.req)}" oninput="SUB_SKILLS_DRAFT[${idx}].req=this.value">
+        <input class="db-input sub-skill-level-limit" style="min-width:0;padding:6px 8px;font-size:12.5px" type="number" min="1" step="1" placeholder="เลเวลขั้นต่ำ" title="ซ่อนสกิลย่อยเมื่อเพดานเลเวลอาชีพต่ำกว่านี้" value="${ss.requiresSkillLevel == null ? '' : DB.esc(ss.requiresSkillLevel)}" oninput="updateSubSkillLevelLimit(${idx}, this)">
         <button type="button" class="icon-btn" onclick="SUB_SKILLS_DRAFT.splice(${idx},1);renderSubSkillsDraft()" title="ลบสกิลย่อย">✕</button>
       </div>
       <input class="db-input" style="min-width:0;padding:6px 8px;font-size:12.5px" type="text" placeholder="คำอธิบายสกิลย่อย เช่น ความแรง สถานะผิดปกติ ดีเลย์..." value="${DB.esc(ss.desc)}" oninput="SUB_SKILLS_DRAFT[${idx}].desc=this.value">
@@ -1070,8 +1186,43 @@ function renderSubSkillsDraft() {
   `).join('');
 }
 
+function updatePositiveLevel(target, key, input) {
+  input.setCustomValidity('');
+  if (!input.value) {
+    target[key] = null;
+    updateJsonPreview();
+    return;
+  }
+  const level = Number(input.value);
+  if (!input.checkValidity() || !Number.isInteger(level) || level < 1) {
+    input.setCustomValidity('กรุณาระบุเลเวลเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป');
+    return;
+  }
+  input.setCustomValidity('');
+  target[key] = level;
+  updateJsonPreview();
+}
+
+function updateSkillLevelLimit(skillIndex, input) {
+  updatePositiveLevel(EDITOR_SKILLS[skillIndex], 'maxSkillLevel', input);
+}
+
+function updateSubSkillLevelLimit(subSkillIndex, input) {
+  updatePositiveLevel(SUB_SKILLS_DRAFT[subSkillIndex], 'requiresSkillLevel', input);
+}
+
+function validateLevelInputs() {
+  for (const input of document.querySelectorAll('.skill-level-limit, .sub-skill-level-limit')) {
+    if (!input.checkValidity()) {
+      input.reportValidity();
+      return false;
+    }
+  }
+  return true;
+}
+
 function addSubSkillDraft() {
-  SUB_SKILLS_DRAFT.push({ name: '', type: 'โจมตีเดี่ยว', req: '', desc: '' });
+  SUB_SKILLS_DRAFT.push({ name: '', type: 'โจมตีเดี่ยว', req: '', requiresSkillLevel: null, desc: '' });
   renderSubSkillsDraft();
 }
 
@@ -1104,6 +1255,8 @@ function openEditSkillModal(skillId) {
     name: ss.name || '',
     type: ss.type || '',
     req: ss.req || '',
+    requiresSkillLevel: ss.requiresSkillLevel || null,
+    image: ss.image || '',
     desc: ss.desc || '',
   }));
   renderSubSkillsDraft();
@@ -1117,6 +1270,7 @@ function generateAutoSkillId(name) {
 }
 
 function saveNewSkill() {
+  if (!validateLevelInputs()) return;
   const name = document.getElementById('ns-name').value.trim();
   const typedId = document.getElementById('ns-id').value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
   const rawId = EDITING_SKILL_ID || typedId || generateAutoSkillId(name);
@@ -1130,12 +1284,14 @@ function saveNewSkill() {
       const o = { name: ss.name.trim() };
       if ((ss.type || '').trim()) o.type = ss.type.trim();
       if ((ss.req || '').trim()) o.req = ss.req.trim();
+      if (Number.isInteger(ss.requiresSkillLevel) && ss.requiresSkillLevel > 0) o.requiresSkillLevel = ss.requiresSkillLevel;
+      if ((ss.image || '').trim()) o.image = ss.image.trim();
       if ((ss.desc || '').trim()) o.desc = ss.desc.trim();
       return o;
     });
 
   const skillObj = { name, type: types.length ? types : ['สกิลกดใช้'], desc };
-  if (cleanSubs.length) skillObj.summonSkills = cleanSubs;
+  skillObj.summonSkills = cleanSubs;
 
   NEW_SKILLS[rawId] = skillObj;
   if (!EDITOR_SKILLS.some(s => s.skillId === rawId)) {
@@ -1146,44 +1302,148 @@ function saveNewSkill() {
   showToast((EDITING_SKILL_ID ? 'อัปเดตสกิล "' : 'สร้างสกิลใหม่ "') + name + '" เรียบร้อย!');
 }
 
-/* Build clean submission payload */
+function buildObtainDetailChanges(entries = Object.values(OBTAIN_DETAILS)) {
+  return entries.flatMap(entry => {
+    const key = `${entry.folder}/${entry.file}`;
+    const original = OBTAIN_BASE_DATA[key];
+    if (!original) return [{ folder: entry.folder, file: entry.file, data: entry.data }];
+    const patch = {};
+    for (const [field, value] of Object.entries(entry.data)) {
+      if (JSON.stringify(value) !== JSON.stringify(original[field] ?? null)) patch[field] = value;
+    }
+    return Object.keys(patch).length
+      ? [{ folder: entry.folder, file: entry.file, patch }]
+      : [];
+  });
+}
+
+/* Build a patch payload containing only changed job, skill, and obtain fields. */
 function buildPayload() {
   const meta = JOBS.find(j => j.key === CURRENT_JOB_KEY);
   const parentKey = document.getElementById('inherit-select').value;
-  const jobObj = {
+  const baseline = CURRENT_JOB_BASE || { name: meta.label, desc: '', obtain: '', inherits: [], skills: [] };
+  const jobObj = { jobId: CURRENT_JOB_KEY };
+  const name = document.getElementById('job-name').value.trim() || meta.label;
+  const desc = document.getElementById('job-desc').value.trim();
+  const obtain = document.getElementById('job-obtain').value.trim();
+  const inherits = parentKey ? [parentKey] : [];
+  if (name !== (baseline.name || meta.label)) jobObj.name = name;
+  if (desc !== (baseline.desc || '')) jobObj.desc = desc;
+  if (obtain !== (baseline.obtain || '')) jobObj.obtain = obtain;
+  if (JSON.stringify(inherits) !== JSON.stringify(baseline.inherits || [])) jobObj.inherits = inherits;
+
+  const baselineSkills = new Map((baseline.skills || []).map(s => [s.skillId, s]));
+  const currentIds = new Set(EDITOR_SKILLS.map(s => s.skillId));
+  const removedSkills = Array.from(baselineSkills.keys()).filter(id => !currentIds.has(id));
+  const skillPatches = EDITOR_SKILLS.flatMap(s => {
+    const original = baselineSkills.get(s.skillId);
+    const obtainRows = s.obtain.map(o => ({
+      method: o.method,
+      lv: o.lv === '' ? 0 : Number(o.lv),
+      loc: o.loc.trim(),
+    }));
+    const currentCap = Number.isInteger(s.maxSkillLevel) && s.maxSkillLevel > 0 ? s.maxSkillLevel : null;
+    if (!original) {
+      const newSkill = { skillId: s.skillId, lv: obtainRows.map(o => o.lv), obtain: obtainRows };
+      if (currentCap) newSkill.maxSkillLevel = currentCap;
+      return [newSkill];
+    }
+
+    const changed = { skillId: s.skillId };
+    const originalRows = (original.obtain || []).map(o => ({
+      method: o.method || 'เปลี่ยนอาชีพ',
+      lv: o.lv == null ? 0 : Number(o.lv),
+      loc: (o.loc || '').trim(),
+    }));
+    if (JSON.stringify(obtainRows) !== JSON.stringify(originalRows)) {
+      changed.obtain = obtainRows;
+      changed.lv = obtainRows.map(o => o.lv);
+    }
+    const originalCap = original.maxSkillLevel == null ? null : Number(original.maxSkillLevel);
+    if (currentCap !== originalCap) changed.maxSkillLevel = currentCap;
+    return Object.keys(changed).length > 1 ? [changed] : [];
+  });
+
+  const newSkills = {};
+  const skillMetadataPatches = {};
+  for (const [id, edited] of Object.entries(NEW_SKILLS)) {
+    if (!currentIds.has(id)) continue;
+    const original = SKILLS_MASTER[id];
+    if (!original) {
+      newSkills[id] = edited;
+      continue;
+    }
+
+    const patch = {};
+    for (const field of ['name', 'type', 'desc', 'image']) {
+      if (Object.prototype.hasOwnProperty.call(edited, field) &&
+          JSON.stringify(edited[field]) !== JSON.stringify(original[field])) {
+        patch[field] = edited[field];
+      }
+    }
+    if (Array.isArray(edited.summonSkills)) {
+      const originalSubs = original.summonSkills || [];
+      const originalByName = new Map(originalSubs.map(ss => [ss.name, ss]));
+      const editedByName = new Map(edited.summonSkills.map(ss => [ss.name, ss]));
+      const remove = originalSubs.filter(ss => !editedByName.has(ss.name)).map(ss => ss.name);
+      const upsert = edited.summonSkills.flatMap(ss => {
+        const old = originalByName.get(ss.name);
+        if (!old) return [ss];
+        const changes = { name: ss.name };
+        for (const field of ['type', 'req', 'requiresSkillLevel', 'desc', 'image']) {
+          if (JSON.stringify(ss[field] ?? null) !== JSON.stringify(old[field] ?? null)) {
+            changes[field] = ss[field] ?? null;
+          }
+        }
+        return Object.keys(changes).length > 1 ? [changes] : [];
+      });
+      if (remove.length || upsert.length) patch.summonSkills = { upsert, remove };
+    }
+    if (Object.keys(patch).length) skillMetadataPatches[id] = patch;
+  }
+
+  const payload = {
+    type: 'job_patch',
+    file: meta.file,
+    job: jobObj,
+  };
+  if (skillPatches.length) jobObj.skills = skillPatches;
+  if (removedSkills.length) payload.removeSkills = removedSkills;
+  if (Object.keys(newSkills).length) payload.newSkills = newSkills;
+  if (Object.keys(skillMetadataPatches).length) payload.skillPatches = skillMetadataPatches;
+  if (Object.keys(NEW_NPCS).length) payload.newNpcs = NEW_NPCS;
+  const odArr = buildObtainDetailChanges();
+  if (odArr.length) payload.obtainDetails = odArr;
+  return payload;
+}
+
+function buildCompleteJobData() {
+  const meta = JOBS.find(j => j.key === CURRENT_JOB_KEY);
+  const job = {
+    ...(CURRENT_JOB_BASE || {}),
     jobId: CURRENT_JOB_KEY,
     name: document.getElementById('job-name').value.trim() || meta.label,
     desc: document.getElementById('job-desc').value.trim(),
     obtain: document.getElementById('job-obtain').value.trim(),
+    skills: EDITOR_SKILLS.map(s => {
+      const skill = {
+        skillId: s.skillId,
+        lv: s.obtain.map(o => o.lv === '' ? 0 : Number(o.lv)),
+        obtain: s.obtain.map(o => ({
+          method: o.method,
+          lv: o.lv === '' ? 0 : Number(o.lv),
+          loc: o.loc.trim(),
+        })),
+      };
+      if (Number.isInteger(s.maxSkillLevel) && s.maxSkillLevel > 0) skill.maxSkillLevel = s.maxSkillLevel;
+      else delete skill.maxSkillLevel;
+      return skill;
+    }),
   };
-  if (parentKey) jobObj.inherits = [parentKey];
-  jobObj.skills = EDITOR_SKILLS.map(s => ({
-    skillId: s.skillId,
-    lv: s.obtain.map(o => o.lv === '' ? 0 : Number(o.lv)),
-    obtain: s.obtain.map(o => ({
-      method: o.method,
-      lv: o.lv === '' ? 0 : Number(o.lv),
-      loc: o.loc.trim(),
-    })),
-  }));
-
-  // Only include NEW_SKILLS that are actually referenced in EDITOR_SKILLS
-  const usedIds = new Set(jobObj.skills.map(s => s.skillId));
-  const usedNewSkills = {};
-  for (const [id, val] of Object.entries(NEW_SKILLS)) {
-    if (usedIds.has(id)) usedNewSkills[id] = val;
-  }
-
-  const payload = {
-    type: 'job_update',
-    file: meta.file,
-    job: jobObj,
-    newSkills: usedNewSkills,
-  };
-  if (Object.keys(NEW_NPCS).length) payload.newNpcs = NEW_NPCS;
-  const odArr = Object.values(OBTAIN_DETAILS);
-  if (odArr.length) payload.obtainDetails = odArr;
-  return payload;
+  const parentKey = document.getElementById('inherit-select').value;
+  if (parentKey) job.inherits = [parentKey];
+  else delete job.inherits;
+  return job;
 }
 
 /* Obtain Detail Modal Logic (Quest / Drop / Shop) */
@@ -1202,11 +1462,11 @@ function renderQuestCondsDraft() {
   }
   box.innerHTML = OD_CONDS_DRAFT.map((c, idx) => `
     <div class="cond-row">
-      <select class="db-select" style="padding:6px 8px;font-size:12.5px" onchange="OD_CONDS_DRAFT[${idx}].type=this.value">
+      <select class="db-select" style="padding:6px 8px;font-size:12.5px" onchange="OD_CONDS_DRAFT[${idx}].type=this.value; renderQuestCondsDraft()">
         <option value="kill" ${c.type === 'kill' ? 'selected' : ''}>⚔ ล่ามอนสเตอร์</option>
         <option value="collect" ${c.type === 'collect' ? 'selected' : ''}>🎒 เก็บไอเทม</option>
       </select>
-      <input class="db-input" style="min-width:0;padding:6px 8px;font-size:12.5px" type="text" placeholder="เช่น ก็อบลิน x20 หรือ ลูกไม้ x15" value="${DB.esc(c.text)}" oninput="OD_CONDS_DRAFT[${idx}].text=this.value">
+      <input class="db-input" list="${c.type === 'kill' ? 'dl-monsters' : 'dl-items'}" style="min-width:0;padding:6px 8px;font-size:12.5px" type="text" placeholder="${c.type === 'kill' ? 'พิมพ์ชื่อมอน เช่น ก็อบลิน x20' : 'พิมพ์ชื่อไอเทม เช่น ลูกไม้ x15'}" value="${DB.esc(c.text)}" oninput="OD_CONDS_DRAFT[${idx}].text=this.value">
       <button type="button" class="icon-btn" onclick="OD_CONDS_DRAFT.splice(${idx},1);renderQuestCondsDraft()">✕</button>
     </div>
   `).join('');
@@ -1218,6 +1478,7 @@ function addQuestCondDraft() {
 }
 
 async function openObtainDetailModal(skillId, skillLv, method, standalone) {
+  await ensureDbAutocompleteLists();
   const folder = methodToFolder(method) || 'quest';
   const file = `${skillId.toLowerCase()}_${skillLv}.json`;
   const key = `${folder}/${file}`;
@@ -1239,15 +1500,22 @@ async function openObtainDetailModal(skillId, skillLv, method, standalone) {
 
   // Load existing data (from unsaved draft first, else fetch existing JSON)
   let existing = OBTAIN_DETAILS[key]?.data || null;
-  if (!existing) {
+  if (!Object.prototype.hasOwnProperty.call(OBTAIN_BASE_DATA, key)) {
     try {
       const r = await fetch(`./data/obtain/${folder}/${file}`);
-      if (r.ok) existing = await r.json();
-    } catch (_) {}
+      if (r.ok) OBTAIN_BASE_DATA[key] = await r.json();
+      else if (r.status === 404) OBTAIN_BASE_DATA[key] = null;
+      else throw new Error(`Obtain data request failed: ${r.status}`);
+    } catch (error) {
+      showToast('โหลดข้อมูลวิธีได้สกิลเดิมไม่สำเร็จ กรุณาลองใหม่');
+      throw error;
+    }
   }
+  if (!existing) existing = OBTAIN_BASE_DATA[key];
   existing = existing || {};
 
   document.getElementById('od-photo').value = existing.photo || '';
+  document.getElementById('od-route-note').value = existing.routeNote || '';
   if (folder === 'quest') {
     document.getElementById('od-q-name').value = existing.questName || '';
     document.getElementById('od-q-npc').value = existing.npcName || '';
@@ -1256,16 +1524,19 @@ async function openObtainDetailModal(skillId, skillLv, method, standalone) {
     document.getElementById('od-q-subloc').value = existing.submitLocation || '';
     OD_CONDS_DRAFT = (existing.conditions || []).map(c => ({ type: c.type || 'kill', text: c.text || '' }));
     renderQuestCondsDraft();
+    updateOdRoutePreview(existing.location || '');
   } else if (folder === 'drop') {
     document.getElementById('od-d-item').value = existing.itemName || '';
     document.getElementById('od-d-mob').value = existing.monster || '';
     document.getElementById('od-d-loc').value = existing.location || '';
     document.getElementById('od-d-rate').value = existing.dropRate || '';
+    updateOdRoutePreview(existing.location || '');
   } else {
     document.getElementById('od-s-name').value = existing.shopName || '';
     document.getElementById('od-s-loc').value = existing.location || '';
     document.getElementById('od-s-price').value = existing.price || '';
     document.getElementById('od-s-note').value = existing.note || '';
+    updateOdRoutePreview(existing.location || '');
   }
 
   document.getElementById('obtain-detail-modal').classList.add('open');
@@ -1275,6 +1546,7 @@ function saveObtainDetail(submitDirectGitHub) {
   if (!OD_CTX) return;
   const { skillId, skillLv, folder, method, file, key, standalone } = OD_CTX;
   const photo = document.getElementById('od-photo').value.trim() || null;
+  const routeNote = document.getElementById('od-route-note').value.trim();
   let data = { skillId, lv: skillLv };
 
   if (folder === 'quest') {
@@ -1284,18 +1556,21 @@ function saveObtainDetail(submitDirectGitHub) {
     data.conditions = OD_CONDS_DRAFT.filter(c => c.text.trim()).map(c => ({ type: c.type, text: c.text.trim() }));
     data.submitNpc = document.getElementById('od-q-subnpc').value.trim() || data.npcName;
     data.submitLocation = document.getElementById('od-q-subloc').value.trim() || data.location;
+    data.routeNote = routeNote || null;
     data.photo = photo;
   } else if (folder === 'drop') {
     data.itemName = document.getElementById('od-d-item').value.trim();
     data.monster = document.getElementById('od-d-mob').value.trim();
     data.location = document.getElementById('od-d-loc').value.trim();
     data.dropRate = document.getElementById('od-d-rate').value.trim() || null;
+    data.routeNote = routeNote || null;
     data.photo = photo;
   } else {
     data.shopName = document.getElementById('od-s-name').value.trim();
     data.location = document.getElementById('od-s-loc').value.trim();
     data.price = document.getElementById('od-s-price').value.trim();
     data.note = document.getElementById('od-s-note').value.trim();
+    data.routeNote = routeNote || null;
     data.photo = photo;
   }
 
@@ -1306,20 +1581,16 @@ function saveObtainDetail(submitDirectGitHub) {
 
   if (standalone) {
     const m = getSkillMeta(skillId);
-    const payload = { type: 'obtain_update', obtainDetails: [entry] };
+    const payload = { type: 'obtain_patch', obtainDetails: buildObtainDetailChanges([entry]) };
     const title = `[เสนอเงื่อนไขทำสกิล] ${m.name || skillId} Lv.${skillLv} (${method})`;
-    const md = [
-      `## 📋 คำขออัปเดตรายละเอียดวิธีทำสกิล: ${m.name || skillId} Lv.${skillLv}`,
-      `- **วิธีได้รับ:** ${method}`,
-      `- **ไฟล์เป้าหมาย:** \`data/obtain/${folder}/${file}\``,
-      '',
-      '```json',
-      JSON.stringify(payload, null, 2),
-      '```',
-    ].join('\n');
     if (submitDirectGitHub) {
-      window.open(`https://github.com/${GITHUB_REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(md)}`, '_blank', 'noopener');
+      if (!payload.obtainDetails.length) {
+        showToast('ไม่มีข้อมูลเปลี่ยนแปลงจากรายการเดิม');
+        return;
+      }
+      openGitHubIssue(title, buildContributionMarkdown(title, payload, [`วิธีได้รับ: ${method}`, `ไฟล์: data/obtain/${folder}/${file}`]));
     } else {
+      const md = buildContributionMarkdown(title, payload, [`วิธีได้รับ: ${method}`, `ไฟล์: data/obtain/${folder}/${file}`]);
       navigator.clipboard?.writeText(md).catch(() => {});
       showToast('คัดลอกเงื่อนไขสกิลแล้ว! กำลังเปิด Discord...');
       window.open(DISCORD_INVITE_URL, '_blank', 'noopener');
@@ -1329,48 +1600,93 @@ function saveObtainDetail(submitDirectGitHub) {
   }
 }
 
-function buildIssueMarkdown() {
-  const payload = buildPayload();
-  const contributor = document.getElementById('contrib-name').value.trim() || 'ไม่ระบุชื่อ';
-  const note = document.getElementById('contrib-note').value.trim();
-  const skillSummary = payload.job.skills.map(s => {
-    const m = getSkillMeta(s.skillId);
-    const lvs = s.obtain.map(o => `Lv.${o.lv} (${o.method}${o.loc ? ': ' + o.loc : ''})`).join(' | ');
-    return `- **${m.name}** (\`${s.skillId}\`): ${lvs}`;
-  }).join('\n') || '- *(ไม่มีสกิลเพิ่มเติม — ใช้สกิลสืบทอด)*';
-
-  const newSkillCount = Object.keys(payload.newSkills).length;
-  const newSkillDetails = Object.entries(payload.newSkills).map(([id, m]) => {
-    const subLines = (m.summonSkills || []).map(ss =>
-      `  - ✦ **${ss.name}**${ss.type ? ` [${ss.type}]` : ''}${ss.req ? ` (${ss.req})` : ''}${ss.desc ? ': ' + ss.desc : ''}`
-    ).join('\n');
-    return `- ✨ **${m.name}** (\`${id}\`) | ประเภท: \`${(m.type || []).join(', ')}\`${m.desc ? ' — ' + m.desc.replace(/<br\s*\/?>/gi, ' ') : ''}${subLines ? '\n' + subLines : ''}`;
-  }).join('\n');
-  const newNpcDetails = Object.entries(payload.newNpcs || {}).map(([id, n]) =>
-    `- 📍 **${n.name}** (\`${id}\`)${n.location ? ' — สถานที่: ' + n.location : ''}${n.image ? ' · มีรูปภาพ' : ''}${n.desc ? ' · ' + n.desc : ''}`
-  ).join('\n');
-  const obtDetailsText = (payload.obtainDetails || []).map(o =>
-    `- 📋 \`data/obtain/${o.folder}/${o.file}\` (${o.data.questName || o.data.itemName || o.data.shopName || 'รายละเอียด'})`
-  ).join('\n');
+function buildContributionMarkdown(title, payload, summaryLines) {
+  const summary = summaryLines.length
+    ? summaryLines.map(line => `- ${line}`).join('\n')
+    : '- ไม่มีข้อมูลเปลี่ยนแปลง';
   return [
-    `## 📝 คำขออัปเดตข้อมูลอาชีพ: ${payload.job.name}`,
-    `- **ผู้ส่งข้อมูล:** ${contributor}`,
-    `- **ไฟล์เป้าหมาย:** \`data/jobs/${payload.file}\``,
-    `- **สืบทอดจาก (inherits):** ${(payload.job.inherits || []).join(', ') || 'ไม่มี'}`,
-    `- **คำอธิบาย:** ${payload.job.desc || '-'}`,
-    `- **วิธีเปลี่ยนอาชีพ:** ${payload.job.obtain || '-'}`,
-    note ? `- **หมายเหตุ:** ${note}` : '',
-    '',
-    `### ⚔️ รายการสกิลที่ส่ง (${payload.job.skills.length} สกิล${newSkillCount ? `, สกิลใหม่ ${newSkillCount} สกิล` : ''})`,
-    skillSummary,
-    newSkillDetails ? '\n### ✨ รายละเอียดสกิลใหม่ / ประเภทสกิลที่เพิ่ม\n' + newSkillDetails : '',
-    newNpcDetails ? '\n### 📍 NPC ใหม่ที่ขอเพิ่ม\n' + newNpcDetails : '',
-    obtDetailsText ? '\n### 📋 รายละเอียดเงื่อนไขวิธีทำสกิล\n' + obtDetailsText : '',
+    `## ${title}`,
+    summary,
     '',
     '```json',
-    JSON.stringify(payload, null, 2),
+    JSON.stringify(payload),
     '```',
-  ].filter(x => x !== '').join('\n');
+  ].join('\n');
+}
+
+function buildIssueMarkdown(payload = buildPayload()) {
+  const contributor = document.getElementById('contrib-name').value.trim() || 'ไม่ระบุชื่อ';
+  const note = document.getElementById('contrib-note').value.trim();
+  const title = `[เสนอข้อมูลอาชีพ] ${document.getElementById('job-name').value.trim() || CURRENT_JOB_KEY} (${CURRENT_JOB_KEY})`;
+  const changedFields = Object.keys(payload.job).filter(field => field !== 'jobId');
+  const summaryLines = [
+    `ผู้ส่งข้อมูล: ${contributor}`,
+    `ไฟล์เป้าหมาย: data/jobs/${payload.file}`,
+    changedFields.length ? `ส่วนอาชีพที่แก้: ${changedFields.join(', ')}` : '',
+    payload.removeSkills?.length ? `ลบสกิล: ${payload.removeSkills.join(', ')}` : '',
+    payload.job.skills?.length ? `แก้ข้อมูลเลเวล/วิธีได้สกิล ${payload.job.skills.length} รายการ` : '',
+    payload.newSkills ? `เพิ่มสกิลใหม่ ${Object.keys(payload.newSkills).length} รายการ` : '',
+    payload.skillPatches ? `แก้รายละเอียดสกิล ${Object.keys(payload.skillPatches).length} รายการ` : '',
+    payload.obtainDetails?.length ? `เพิ่ม/แก้เงื่อนไขวิธีได้สกิล ${payload.obtainDetails.length} รายการ` : '',
+    note ? `หมายเหตุ: ${note}` : '',
+  ].filter(Boolean);
+  return buildContributionMarkdown(title, payload, summaryLines);
+}
+
+function hasContributionChanges(payload) {
+  if (Object.keys(payload.job).some(field => field !== 'jobId')) return true;
+  return ['removeSkills', 'newSkills', 'skillPatches', 'newNpcs', 'obtainDetails']
+    .some(field => payload[field] && Object.keys(payload[field]).length > 0);
+}
+
+function showIssueBodyFallback(markdown) {
+  const wrap = document.getElementById('issue-body-fallback');
+  const textarea = document.getElementById('issue-body-fallback-text');
+  textarea.value = markdown;
+  wrap.style.display = 'block';
+  textarea.focus();
+  textarea.select();
+  showToast('คัดลอกอัตโนมัติไม่สำเร็จ กรุณาคัดลอกข้อความในกล่องแล้ววางใน GitHub Issue');
+}
+
+function copyIssueBodyFallback() {
+  const textarea = document.getElementById('issue-body-fallback-text');
+  textarea.focus();
+  textarea.select();
+  if (!navigator.clipboard || !navigator.clipboard.writeText) {
+    showToast('คัดลอกไม่ได้ กรุณาใช้ Ctrl+C แล้ววางใน GitHub Issue');
+    return;
+  }
+  try {
+    navigator.clipboard.writeText(textarea.value)
+      .then(() => showToast('คัดลอกเนื้อหาแล้ว ให้วางใน GitHub Issue'))
+      .catch(() => showToast('คัดลอกไม่ได้ กรุณาใช้ Ctrl+C แล้ววางใน GitHub Issue'));
+  } catch (error) {
+    showToast('คัดลอกไม่ได้ กรุณาใช้ Ctrl+C แล้ววางใน GitHub Issue');
+  }
+}
+
+function openGitHubIssue(title, markdown) {
+  const baseUrl = `https://github.com/${GITHUB_REPO}/issues/new?title=${encodeURIComponent(title)}`;
+  const fullUrl = `${baseUrl}&body=${encodeURIComponent(markdown)}`;
+  document.getElementById('issue-body-fallback').style.display = 'none';
+  if (fullUrl.length <= 7500) {
+    window.open(fullUrl, '_blank', 'noopener');
+    return;
+  }
+
+  window.open(baseUrl, '_blank', 'noopener');
+  if (!navigator.clipboard || !navigator.clipboard.writeText) {
+    showIssueBodyFallback(markdown);
+    return;
+  }
+  try {
+    navigator.clipboard.writeText(markdown)
+      .then(() => showToast('เปิด GitHub Issue และคัดลอกข้อมูลที่เปลี่ยนแล้ว ให้วางในช่องรายละเอียด'))
+      .catch(() => showIssueBodyFallback(markdown));
+  } catch (error) {
+    showIssueBodyFallback(markdown);
+  }
 }
 
 function updateJsonPreview() {
@@ -1381,28 +1697,31 @@ function updateJsonPreview() {
 }
 
 function toggleJsonPreview() {
+  if (!validateLevelInputs()) return;
   const wrap = document.getElementById('json-preview-wrap');
   wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
   updateJsonPreview();
 }
 
 function submitViaGitHub() {
+  if (!validateLevelInputs()) return;
   const payload = buildPayload();
-  const title = `[เสนอข้อมูลอาชีพ] ${payload.job.name} (${payload.job.jobId})`;
-  const body = buildIssueMarkdown();
-  const url = `https://github.com/${GITHUB_REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
-
-  if (url.length > 7500) {
-    navigator.clipboard?.writeText(body).catch(() => {});
-    alert('ข้อมูลมีขนาดยาวเกินความยาว URL — ระบบคัดลอกเนื้อหาไว้ในคลิปบอร์ดให้แล้วครับ! กด Ctrl+V วางลงในช่องรายละเอียดของ GitHub Issue ได้เลย');
-    window.open(`https://github.com/${GITHUB_REPO}/issues/new?title=${encodeURIComponent(title)}`, '_blank', 'noopener');
-  } else {
-    window.open(url, '_blank', 'noopener');
+  if (!hasContributionChanges(payload)) {
+    showToast('ยังไม่มีข้อมูลเปลี่ยนแปลงให้ส่ง');
+    return;
   }
+  const title = `[เสนอข้อมูลอาชีพ] ${document.getElementById('job-name').value.trim() || CURRENT_JOB_KEY} (${CURRENT_JOB_KEY})`;
+  openGitHubIssue(title, buildIssueMarkdown(payload));
 }
 
 function copyForDiscord() {
-  const md = buildIssueMarkdown();
+  if (!validateLevelInputs()) return;
+  const payload = buildPayload();
+  if (!hasContributionChanges(payload)) {
+    showToast('ยังไม่มีข้อมูลเปลี่ยนแปลงให้ส่ง');
+    return;
+  }
+  const md = buildIssueMarkdown(payload);
   const openDiscord = () => window.open(DISCORD_INVITE_URL, '_blank', 'noopener');
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(md).then(() => {
@@ -1421,11 +1740,13 @@ function copyForDiscord() {
 }
 
 function downloadJson() {
-  const payload = buildPayload();
-  const blob = new Blob([JSON.stringify(payload.job, null, 2)], { type: 'application/json' });
+  if (!validateLevelInputs()) return;
+  const job = buildCompleteJobData();
+  const meta = JOBS.find(j => j.key === CURRENT_JOB_KEY);
+  const blob = new Blob([JSON.stringify(job, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = payload.file;
+  a.download = meta.file;
   a.click();
   URL.revokeObjectURL(a.href);
   showToast('ดาวน์โหลดไฟล์ ' + payload.file + ' แล้ว');

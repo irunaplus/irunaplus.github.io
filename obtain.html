@@ -248,6 +248,40 @@
   .npc-popup-error { font-size: 13px; color: #ff8080; padding: 1.5rem; text-align: center; }
   .npc-popup-info { margin-top: 10px; font-size: 12px; color: var(--text-dim); line-height: 1.7; }
 
+  /* ── DB Links & Travel Route Card ── */
+  .db-inline-link {
+    color: var(--accent); text-decoration: none; font-weight: 600;
+    border-bottom: 1px dashed rgba(63,200,249,0.5); transition: color .15s;
+  }
+  .db-inline-link:hover { color: #8ee0ff; border-bottom-style: solid; }
+  .db-mini-badge {
+    display: inline-flex; align-items: center; gap: 4px; margin-left: 6px;
+    padding: 2px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 600;
+    background: rgba(63,200,249,0.1); border: 1px solid rgba(63,200,249,0.32);
+    color: var(--accent); text-decoration: none; vertical-align: middle;
+  }
+  .db-mini-badge:hover { background: rgba(63,200,249,0.22); }
+  .route-card {
+    margin-top: 10px; padding: 10px 12px; border-radius: 9px;
+    background: rgba(12, 16, 30, 0.78); border: 1px solid rgba(212,168,67,0.3);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .route-card-title { font-size: 11.5px; font-weight: 700; color: var(--gold); letter-spacing: 0.4px; }
+  .route-steps { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+  .route-step {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px; border-radius: 6px; font-size: 12px;
+    background: rgba(30,41,59,0.85); border: 1px solid rgba(65,82,118,0.6);
+    color: var(--accent); text-decoration: none; transition: all .15s;
+  }
+  .route-step:hover { border-color: var(--accent); background: rgba(63,200,249,0.15); }
+  .route-step.town { color: #77d77b; border-color: rgba(119,215,123,0.35); }
+  .route-step.target {
+    background: rgba(212,168,67,0.18); border-color: var(--gold); color: var(--gold-light); font-weight: 700;
+  }
+  .route-arrow { color: var(--text-dim); font-size: 11px; }
+  .route-note { font-size: 12.5px; color: #f0d799; margin-top: 2px; }
+
   @media (max-width: 600px) {
     .tl-body { padding: 10px 12px; }
     .obtain-card-header { padding: 12px 14px 10px; }
@@ -301,12 +335,136 @@
 
 <script>
 const SKILLS_DATA_PATH  = './data/skills.json';
-const NPC_BASE          = './data/npc/';
+const NPC_BASE          = './data/NPC/';
 const OBTAIN_QUEST_PATH = './data/obtain/quest/';
 const OBTAIN_DROP_PATH  = './data/obtain/drop/';
 const OBTAIN_SHOP_PATH  = './data/obtain/shop/';
-let NPC_ID_MAP = {};
-fetch('./NPC/npc_id_map.json').then(r => r.json()).then(d => { NPC_ID_MAP = d; }).catch(() => {});
+let NPC_ID_MAP  = {};
+let ZONE_ROUTES = { routes: {}, byName: {} };
+let SEARCH_IDX  = { items: [], monsters: [], zones: [] };
+
+async function loadRequiredJson(path) {
+  const response = await fetch(path);
+  if (!response.ok) throw new Error(`ไม่สามารถโหลดข้อมูล ${path} (${response.status})`);
+  return response.json();
+}
+
+const _dbReady = Promise.all([
+  loadRequiredJson('./data/NPC/npc_id_map.json'),
+  loadRequiredJson('./data/db/zone_routes.json'),
+  loadRequiredJson('./data/db/search_index.json'),
+]).then(([npcMap, routes, searchIndex]) => {
+  NPC_ID_MAP = npcMap;
+  ZONE_ROUTES = routes;
+  SEARCH_IDX = searchIndex;
+});
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Lookup Map Route from zone_routes.json ── */
+function findZoneRoute(locText) {
+  if (!locText) return null;
+  const q = String(locText).trim().toLowerCase();
+  const direct = ZONE_ROUTES.byName?.[q];
+  if (direct && ZONE_ROUTES.routes[direct]) return ZONE_ROUTES.routes[direct];
+  // Fuzzy match (contains)
+  for (const [k, slug] of Object.entries(ZONE_ROUTES.byName || {})) {
+    if (k.length >= 3 && (q.includes(k) || k.includes(q))) {
+      if (ZONE_ROUTES.routes[slug]) return ZONE_ROUTES.routes[slug];
+    }
+  }
+  return null;
+}
+
+function zoneLinkHtml(locText) {
+  if (!locText) return '';
+  const r = findZoneRoute(locText);
+  if (r) {
+    return `📍 <a class="db-inline-link" href="db_zones.html?ep=${encodeURIComponent(r.ep)}&zone=${encodeURIComponent(r.slug)}">${escHtml(locText)}</a>`;
+  }
+  return `📍 ${escHtml(locText)}`;
+}
+
+function buildRouteCard(locText, routeNote) {
+  const r = findZoneRoute(locText);
+  if (!r && !routeNote) return '';
+  let stepsHtml = '';
+  if (r) {
+    const steps = [];
+    const rootSlug = r.path && r.path.length ? r.path[0].slug : r.slug;
+    const rootInfo = ZONE_ROUTES.routes[rootSlug] || r;
+    if (r.nearestTown && (!r.path || !r.path.some(x => x.slug === r.nearestTown.slug))) {
+      steps.push({ ...r.nearestTown, type: 'town' });
+    }
+    if (rootInfo.prev && (!steps.length || steps[steps.length - 1].slug !== rootInfo.prev.slug)) {
+      steps.push(rootInfo.prev);
+    }
+    for (const node of (r.path || [])) {
+      if (!steps.some(x => x.slug === node.slug)) steps.push(node);
+    }
+    if (steps.length) {
+      stepsHtml = `<div class="route-steps">${steps.map((st, idx) => {
+        const isTarget = st.slug === r.slug;
+        const cls = isTarget ? 'target' : (st.type === 'town' ? 'town' : '');
+        const href = `db_zones.html?ep=${encodeURIComponent(st.ep)}&zone=${encodeURIComponent(st.slug)}`;
+        return (idx > 0 ? `<span class="route-arrow">➜</span>` : '') +
+          `<a class="route-step ${cls}" href="${href}">${st.type === 'town' ? '🏰 ' : (isTarget ? '📍 ' : '')}${escHtml(st.name)}</a>`;
+      }).join('')}</div>`;
+    }
+  }
+  const noteHtml = routeNote ? `<div class="route-note">💡 ${escHtml(routeNote)}</div>` : '';
+  return `<div class="route-card">
+    <div class="route-card-title">🧭 เส้นทางการเดินทางไปแผนที่นี้</div>
+    ${stepsHtml}${noteHtml}
+  </div>`;
+}
+
+/* ── Lookup Monster & Item in search_index.json ── */
+function findMonsterMatch(nameText) {
+  if (!nameText) return null;
+  const clean = String(nameText).replace(/\s*[x×]\s*\d+.*$/i, '').replace(/กำจัด|ล่า/g, '').trim().toLowerCase();
+  if (clean.length < 2) return null;
+  const exact = (SEARCH_IDX.monsters || []).find(m => m.n.toLowerCase() === clean);
+  if (exact) return exact;
+  return (SEARCH_IDX.monsters || []).find(m => clean.includes(m.n.toLowerCase()) && m.n.length >= 2) || null;
+}
+
+function findItemMatch(nameText) {
+  if (!nameText) return null;
+  const clean = String(nameText).replace(/\s*[x×]\s*\d+.*$/i, '').replace(/เก็บ|หา|ใช้ไอเทม:?/g, '').trim().toLowerCase();
+  if (clean.length < 2) return null;
+  const exact = (SEARCH_IDX.items || []).find(it => it.n.toLowerCase() === clean);
+  if (exact) return exact;
+  return (SEARCH_IDX.items || []).find(it => clean.includes(it.n.toLowerCase()) && it.n.length >= 3) || null;
+}
+
+function renderConditionRow(c) {
+  const icon = c.icon || (c.type === 'kill' ? '⚔' : '🎒');
+  let linkBadge = '';
+  let subRoute = '';
+  if (c.type === 'kill') {
+    const mob = findMonsterMatch(c.text);
+    if (mob) {
+      linkBadge = `<a class="db-mini-badge" href="db_zones.html?ep=${encodeURIComponent(mob.ep)}&zone=${encodeURIComponent(mob.zs)}">🐉 ${escHtml(mob.n)}${mob.lv ? ' Lv.' + escHtml(mob.lv) : ''} @ ${escHtml(mob.z)}</a>`;
+      subRoute = buildRouteCard(mob.z, '');
+    }
+  } else if (c.type === 'collect') {
+    const it = findItemMatch(c.text);
+    if (it) {
+      linkBadge = `<a class="db-mini-badge" href="db_items.html?item=${encodeURIComponent(it.s)}">🎒 ดูจุดดรอปไอเทม</a>`;
+    }
+  }
+  return `<div class="task-item ${escHtml(c.type || '')}" style="flex-direction:column;align-items:stretch">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="task-icon">${icon}</span>
+      <span>${escHtml(c.text)}</span>
+      ${linkBadge}
+    </div>
+    ${subRoute}
+  </div>`;
+}
 
 /* ── NPC Popup ── */
 async function showNpcPopup(npcId, label) {
@@ -378,26 +536,23 @@ function buildQuestSection(data, lvChar, lvNum) {
 
   /* Step 1: รับเควสจาก NPC */
   const npcHTML   = npcChip(data.npcName);
-  const locSubTxt = data.location ? `📍 ${data.location}` : null;
+  const locSubTxt = data.location ? zoneLinkHtml(data.location) : null;
+  const routeHTML = buildRouteCard(data.location, data.routeNote);
   steps += tlStep(stepNum++, cc,
     'รับเควสจาก NPC',
     data.questName
-      ? `📜 <strong>${data.questName}</strong>`
+      ? `📜 <strong>${escHtml(data.questName)}</strong>`
       : 'รอการอัปเดต',
     locSubTxt ? `${npcHTML} &nbsp;·&nbsp; ${locSubTxt}` : npcHTML,
-    data.photo || null
+    data.photo || null,
+    routeHTML
   );
 
   /* Step 2: สิ่งที่ต้องทำ */
   let taskHTML = '';
   if (data.conditions && data.conditions.length > 0) {
     taskHTML = `<div class="task-list">` +
-      data.conditions.map(c =>
-        `<div class="task-item ${c.type}">
-          <span class="task-icon">${c.icon || (c.type === 'kill' ? '⚔' : '')}</span>
-          <span>${c.text}</span>
-        </div>`
-      ).join('') +
+      data.conditions.map(renderConditionRow).join('') +
       `</div>`;
   } else {
     taskHTML = `<div class="task-list"><div class="task-placeholder">⚙ ข้อมูลเงื่อนไขเควสจะถูกเพิ่มในอนาคต</div></div>`;
@@ -414,7 +569,7 @@ function buildQuestSection(data, lvChar, lvNum) {
   steps += tlStep(stepNum++, cc,
     'ส่งเควส',
     submitNpc ? npcChip(submitNpc) : 'ส่งเควสกับ NPC ที่รับมา',
-    submitLocation ? ` ${submitLocation}` : null,
+    submitLocation ? zoneLinkHtml(submitLocation) : null,
     null
   );
 
@@ -444,25 +599,42 @@ function buildDropSection(data, lvChar, lvNum) {
   let steps = '';
 
   /* Step 1: ล่ามอนสเตอร์ */
+  const mobMatch = findMonsterMatch(data.monster);
+  const mobMapName = data.location || (mobMatch ? mobMatch.z : '');
   const monsterSub = [
-    data.location ? `📍 ${data.location}` : null,
-    data.dropRate  ? `อัตราดรอป: ${data.dropRate}` : null,
+    mobMapName ? zoneLinkHtml(mobMapName) : null,
+    mobMatch && mobMatch.lv ? `Lv.${escHtml(mobMatch.lv)}` : null,
+    mobMatch && mobMatch.a ? `ธาตุ: ${escHtml(mobMatch.a)}` : null,
+    data.dropRate ? `อัตราดรอป: ${escHtml(data.dropRate)}` : null,
   ].filter(Boolean).join(' &nbsp;·&nbsp; ') || null;
 
+  const mobTitleHtml = data.monster
+    ? (mobMatch
+        ? `🐉 <a class="db-inline-link" href="db_zones.html?ep=${encodeURIComponent(mobMatch.ep)}&zone=${encodeURIComponent(mobMatch.zs)}">${escHtml(data.monster)}</a>`
+        : `🐉 <a class="db-inline-link" href="db_search.html?q=${encodeURIComponent(data.monster)}">${escHtml(data.monster)}</a>`)
+    : 'มอนสเตอร์ที่ดรอปไอเทม';
+
+  const routeHTML = buildRouteCard(mobMapName, data.routeNote);
   steps += tlStep(stepNum++, cc,
     'ล่ามอนสเตอร์',
-    data.monster ? ` <strong>${data.monster}</strong>` : 'มอนสเตอร์ที่ดรอปไอเทม',
+    mobTitleHtml,
     monsterSub,
-    data.photo || null
+    data.photo || null,
+    routeHTML
   );
 
   /* Step 2: เก็บไอเทมดรอป */
+  const itemMatch = findItemMatch(data.itemName);
+  const itemChipHtml = data.itemName
+    ? (itemMatch
+        ? `<a class="item-chip drop" style="text-decoration:none" href="db_items.html?item=${encodeURIComponent(itemMatch.s)}">🗡 ${escHtml(data.itemName)}</a>`
+        : `<a class="item-chip drop" style="text-decoration:none" href="db_search.html?q=${encodeURIComponent(data.itemName)}">🗡 ${escHtml(data.itemName)}</a>`)
+    : 'ไอเทมสกิล';
+
   steps += tlStep(stepNum++, cc,
     'เก็บไอเทมที่ดรอป',
-    data.itemName
-      ? `<span class="item-chip drop">🗡 ${data.itemName}</span>`
-      : 'ไอเทมสกิล',
-    'ไอเทมดรอปจากมอนสเตอร์',
+    itemChipHtml,
+    'ไอเทมดรอปจากมอนสเตอร์ (คลิกเพื่อดูข้อมูลไอเทม)',
     null
   );
 
@@ -500,18 +672,20 @@ function buildShopSection(data, lvChar, lvNum) {
 
   /* Step 1: ซื้อไอเทม */
   const shopSub = [
-    data.location ? `📍 ${data.location}` : null,
-    data.price    ? `ราคา: ${data.price}` : null,
-    data.note     ? `⚠ ${data.note}`      : null,
+    data.location ? zoneLinkHtml(data.location) : null,
+    data.price    ? `ราคา: ${escHtml(data.price)}` : null,
+    data.note     ? `⚠ ${escHtml(data.note)}`      : null,
   ].filter(Boolean).join(' &nbsp;·&nbsp; ') || null;
 
+  const shopRouteHTML = buildRouteCard(data.location, data.routeNote);
   steps += tlStep(stepNum++, cc,
     'ซื้อไอเทมสกิล',
     data.shopName
-      ? `<span class="item-chip shop">🛒 ${data.shopName}</span>`
+      ? `<span class="item-chip shop">🛒 ${escHtml(data.shopName)}</span>`
       : `<span class="item-chip shop">🛒 ซื้อจากร้านค้าในเกม</span>`,
     shopSub,
-    data.photo || null
+    data.photo || null,
+    shopRouteHTML
   );
 
   /* Step 2: ใช้ไอเทม */
@@ -542,14 +716,20 @@ function buildShopSection(data, lvChar, lvNum) {
 
 /* ── Main render ── */
 async function renderObtainPage() {
+  const vp = document.getElementById('view-port');
+  try {
+    await _dbReady;
+  } catch (error) {
+    console.error(error);
+    vp.innerHTML = `<div class="state-box"><h3>โหลดข้อมูลวิธีได้สกิลไม่สำเร็จ</h3><p>${escHtml(error.message)}</p></div>`;
+    return;
+  }
   const params  = new URLSearchParams(location.search);
   const type    = params.get('type')  || '';
   const skillId = params.get('skill') || '';
   const lvChar  = params.get('lv')    || '?';
   const rawClv  = (params.get('clv')  || '').trim();
   const lvNum   = (rawClv && rawClv.toLowerCase() !== 'null') ? rawClv : 'รอระบุ';
-
-  const vp = document.getElementById('view-port');
 
   const colorClass = type === 'เควส'            ? 'quest'
                    : type === 'ไอเทมดรอป'        ? 'drop'
