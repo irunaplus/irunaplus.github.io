@@ -188,7 +188,7 @@
     </div>
     <div class="submit-bar">
       <button type="button" class="btn-primary-big" onclick="submitViaGitHub()">📤 ส่งคำขออนุมัติผ่าน GitHub (แนะนำ)</button>
-      <button type="button" class="db-btn" onclick="copyForDiscord()">📋 คัดลอกส่งใน Discord</button>
+      <button type="button" class="db-btn" onclick="copyForDiscord()">📋 คัดลอกและเปิด Discord</button>
       <button type="button" class="db-btn secondary" onclick="downloadJson()">💾 ดาวน์โหลด JSON</button>
       <button type="button" class="db-btn secondary" onclick="toggleJsonPreview()">👁️ ดูตัวอย่าง JSON</button>
     </div>
@@ -229,18 +229,11 @@
         <input class="db-input" id="ns-id" type="text" placeholder="เช่น guardian (ไม่เว้นวรรค)">
       </div>
       <div class="field">
-        <label>ประเภทสกิล (เลือกได้หลายข้อ)</label>
-        <div class="type-chip-row" id="ns-types">
-          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลกดใช้</button>
-          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลติดตัว</button>
-          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลโจมตีเดี่ยว</button>
-          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลโจมตีหมู่</button>
-          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลบัพ(ใช้ได้กับแค่ตัวเอง)</button>
-          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลบัพ(ปาร์ตี้)</button>
-          <button type="button" class="chip" onclick="this.classList.toggle('active')">ดีบัฟ</button>
-          <button type="button" class="chip" onclick="this.classList.toggle('active')">ฮีล</button>
-          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลอัญเชิญ</button>
-          <button type="button" class="chip" onclick="this.classList.toggle('active')">สกิลพิเศษ</button>
+        <label>ประเภทสกิล (เลือกได้หลายข้อ หรือพิมพ์เพิ่มประเภทใหม่ได้)</label>
+        <div class="type-chip-row" id="ns-types"></div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <input class="db-input" id="ns-custom-type" type="text" placeholder="พิมพ์ประเภทสกิลใหม่ เช่น สกิลโต้กลับ, สกิลธาตุ..." style="padding:7px 10px;font-size:13px" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomSkillType();}">
+          <button type="button" class="db-btn secondary" onclick="addCustomSkillType()" style="white-space:nowrap">+ เพิ่มประเภทใหม่</button>
         </div>
       </div>
       <div class="field">
@@ -259,6 +252,13 @@
 DB.initSidebar();
 
 const GITHUB_REPO = 'irunaplus/irunaplus.github.io';
+const DISCORD_INVITE_URL = 'https://discord.gg/SKDeYngNp';
+const DEFAULT_SKILL_TYPES = [
+  'สกิลกดใช้', 'สกิลติดตัว', 'สกิลโจมตีเดี่ยว', 'สกิลโจมตีหมู่',
+  'สกิลบัพ(ใช้ได้กับแค่ตัวเอง)', 'สกิลบัพ(ปาร์ตี้)', 'ดีบัฟ', 'ฮีล',
+  'สกิลอัญเชิญ', 'สกิลพิเศษ'
+];
+let CUSTOM_TYPES = [];
 
 const JOBS = [
   { key: 'apprentice_warrior', file: 'apprentice_warrior.json', label: 'นักรบฝึกหัด', defaultParent: '' },
@@ -345,6 +345,55 @@ async function fetchJobByKey(key) {
   return null;
 }
 
+function mergeObtainLists(parentList, childList) {
+  const norm = e => ({
+    method: (typeof e === 'object' && e ? e.method : e) || '',
+    lv: (typeof e === 'object' && e && e.lv != null && e.lv !== '') ? String(e.lv).trim() : '',
+    loc: (typeof e === 'object' && e && e.loc) ? String(e.loc).trim() : '',
+  });
+  const out = (parentList || []).map(x => (typeof x === 'object' && x ? { ...x } : x));
+  if (!childList || !childList.length) return out;
+  if (!out.length) return childList.map(x => (typeof x === 'object' && x ? { ...x } : x));
+
+  const p0 = norm(out[0]);
+  const c0 = norm(childList[0]);
+  if (p0.method === c0.method && p0.lv === c0.lv && p0.lv !== '') {
+    for (let i = 0; i < childList.length; i++) {
+      const ce = norm(childList[i]);
+      if (i < out.length) {
+        const pe = norm(out[i]);
+        out[i] = {
+          method: ce.method || pe.method,
+          lv: ce.lv !== '' ? Number(ce.lv) : (pe.lv !== '' ? Number(pe.lv) : ''),
+          loc: ce.loc.length >= pe.loc.length ? ce.loc : pe.loc,
+        };
+      } else {
+        out.push({ ...childList[i] });
+      }
+    }
+    return out;
+  }
+
+  for (const rawEntry of childList) {
+    const ce = norm(rawEntry);
+    const dupIdx = out.findIndex(ex => {
+      const pe = norm(ex);
+      return pe.method === ce.method && pe.lv === ce.lv && ce.lv !== '';
+    });
+    if (dupIdx >= 0) {
+      if (ce.loc.length > norm(out[dupIdx]).loc.length) out[dupIdx] = rawEntry;
+      continue;
+    }
+    const emptyIdx = out.findIndex(ex => {
+      const pe = norm(ex);
+      return pe.lv === '' && pe.loc === '' && pe.method === ce.method;
+    });
+    if (emptyIdx >= 0 && ce.lv !== '') out[emptyIdx] = rawEntry;
+    else out.push(rawEntry);
+  }
+  return out;
+}
+
 async function resolveParentChain(parentKey, visited = new Set()) {
   const map = new Map();
   if (!parentKey) return map;
@@ -371,10 +420,7 @@ async function resolveParentChain(parentKey, visited = new Set()) {
       map.set(s.skillId, { obtain: [...(s.obtain || [])], from: label });
     } else {
       const cur = map.get(s.skillId);
-      for (const e of (s.obtain || [])) {
-        const dup = cur.obtain.some(x => x.method === e.method && String(x.lv) === String(e.lv));
-        if (!dup) cur.obtain.push(e);
-      }
+      cur.obtain = mergeObtainLists(cur.obtain, s.obtain || []);
     }
   }
   return map;
@@ -594,18 +640,53 @@ function pickExistingSkill(skillId) {
 }
 
 /* New Skill Modal */
+function getKnownSkillTypes() {
+  const set = new Set(DEFAULT_SKILL_TYPES);
+  for (const m of Object.values(SKILLS_MASTER || {})) {
+    const arr = Array.isArray(m.type) ? m.type : (m.type ? String(m.type).split(',') : []);
+    for (const t of arr) {
+      const clean = String(t || '').trim();
+      if (clean) set.add(clean);
+    }
+  }
+  for (const t of CUSTOM_TYPES) set.add(t);
+  return Array.from(set);
+}
+
+function renderSkillTypeChips(activeSet = new Set()) {
+  const box = document.getElementById('ns-types');
+  box.innerHTML = getKnownSkillTypes().map(t => {
+    const isCustom = CUSTOM_TYPES.includes(t);
+    const active = activeSet.has(t) ? 'active' : '';
+    return `<button type="button" class="chip ${active}" data-type="${DB.esc(t)}" onclick="this.classList.toggle('active')">${DB.esc(t)}${isCustom ? ' ✨' : ''}</button>`;
+  }).join('');
+}
+
+function addCustomSkillType() {
+  const inp = document.getElementById('ns-custom-type');
+  const val = (inp.value || '').trim();
+  if (!val) return;
+  const activeSet = new Set(Array.from(document.querySelectorAll('#ns-types .chip.active')).map(c => c.dataset.type));
+  if (!getKnownSkillTypes().includes(val)) CUSTOM_TYPES.push(val);
+  activeSet.add(val);
+  renderSkillTypeChips(activeSet);
+  inp.value = '';
+  showToast('เพิ่มประเภทสกิลใหม่ "' + val + '" แล้ว (จะส่งขออนุมัติพร้อมสกิล)');
+}
+
 function openNewSkillModal() {
   document.getElementById('ns-name').value = '';
   document.getElementById('ns-id').value = '';
   document.getElementById('ns-desc').value = '';
-  document.querySelectorAll('#ns-types .chip').forEach(c => c.classList.remove('active'));
+  document.getElementById('ns-custom-type').value = '';
+  renderSkillTypeChips(new Set());
   document.getElementById('new-skill-modal').classList.add('open');
 }
 function saveNewSkill() {
   const name = document.getElementById('ns-name').value.trim();
   const rawId = document.getElementById('ns-id').value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
   const desc = document.getElementById('ns-desc').value.trim().replace(/\n/g, '<br>');
-  const types = Array.from(document.querySelectorAll('#ns-types .chip.active')).map(c => c.textContent.trim());
+  const types = Array.from(document.querySelectorAll('#ns-types .chip.active')).map(c => c.dataset.type);
   if (!name) { alert('กรุณากรอกชื่อสกิล'); return; }
   if (!rawId) { alert('กรุณากรอกรหัสสกิลภาษาอังกฤษ (skillId) เช่น guardian'); return; }
 
@@ -665,6 +746,9 @@ function buildIssueMarkdown() {
   }).join('\n') || '- *(ไม่มีสกิลเพิ่มเติม — ใช้สกิลสืบทอด)*';
 
   const newSkillCount = Object.keys(payload.newSkills).length;
+  const newSkillDetails = Object.entries(payload.newSkills).map(([id, m]) =>
+    `- ✨ **${m.name}** (\`${id}\`) | ประเภท: \`${(m.type || []).join(', ')}\`${m.desc ? ' — ' + m.desc.replace(/<br\s*\/?>/gi, ' ') : ''}`
+  ).join('\n');
   return [
     `## 📝 คำขออัปเดตข้อมูลอาชีพ: ${payload.job.name}`,
     `- **ผู้ส่งข้อมูล:** ${contributor}`,
@@ -676,6 +760,7 @@ function buildIssueMarkdown() {
     '',
     `### ⚔️ รายการสกิลที่ส่ง (${payload.job.skills.length} สกิล${newSkillCount ? `, สกิลใหม่ ${newSkillCount} สกิล` : ''})`,
     skillSummary,
+    newSkillDetails ? '\n### ✨ รายละเอียดสกิลใหม่ / ประเภทสกิลที่เพิ่ม\n' + newSkillDetails : '',
     '',
     '```json',
     JSON.stringify(payload, null, 2),
@@ -713,12 +798,21 @@ function submitViaGitHub() {
 
 function copyForDiscord() {
   const md = buildIssueMarkdown();
-  navigator.clipboard.writeText(md).then(() => {
-    showToast('คัดลอกข้อมูลเรียบร้อย! นำไปวางส่งให้แอดมินใน Discord ได้เลย');
-  }).catch(() => {
+  const openDiscord = () => window.open(DISCORD_INVITE_URL, '_blank', 'noopener');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(md).then(() => {
+      showToast('คัดลอกข้อมูลเรียบร้อย! กำลังเปิด Discord Server...');
+      openDiscord();
+    }).catch(() => {
+      toggleJsonPreview();
+      showToast('กำลังเปิด Discord (คัดลอกข้อความจากกล่องด้านล่างได้เลย)');
+      openDiscord();
+    });
+  } else {
     toggleJsonPreview();
-    showToast('กรุณาคัดลอกข้อความจากกล่องตัวอย่างด้านล่าง');
-  });
+    showToast('กำลังเปิด Discord (คัดลอกข้อความจากกล่องด้านล่างได้เลย)');
+    openDiscord();
+  }
 }
 
 function downloadJson() {

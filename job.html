@@ -361,26 +361,66 @@ async function resolveInheritedSkills(job, currentKey, visited = new Set()) {
 
   const skillMap = new Map();
 
-  const addEntryDedup = (targetObtain, entry) => {
-    const m = (typeof entry === 'object' ? entry.method : entry) || '';
-    const lv = String(typeof entry === 'object' ? entry.lv : '').trim();
-    const loc = (typeof entry === 'object' ? entry.loc : '').trim();
-    const dupIdx = targetObtain.findIndex(ex => {
-      const em = (typeof ex === 'object' ? ex.method : ex) || '';
-      const elv = String(typeof ex === 'object' ? ex.lv : '').trim();
-      const eloc = (typeof ex === 'object' ? ex.loc : '').trim();
-      if (em === m && elv === lv) {
-        if (!loc || !eloc || loc === eloc) return true;
-        if (em === 'เปลี่ยนอาชีพ') return true;
+  const normEntry = (e) => ({
+    method: (typeof e === 'object' && e ? e.method : e) || '',
+    lv: (typeof e === 'object' && e && e.lv != null && e.lv !== '') ? String(e.lv).trim() : '',
+    loc: (typeof e === 'object' && e && e.loc) ? String(e.loc).trim() : '',
+  });
+
+  const mergeObtainLists = (parentList, childList) => {
+    const out = parentList.map(x => (typeof x === 'object' && x ? { ...x } : x));
+    if (!childList || !childList.length) return out;
+    if (!out.length) return childList.map(x => (typeof x === 'object' && x ? { ...x } : x));
+
+    // Check if childList already starts with the same Lv.1 as parentList (legacy full-copy format)
+    const p0 = normEntry(out[0]);
+    const c0 = normEntry(childList[0]);
+    const isFullList = p0.method === c0.method && p0.lv === c0.lv && p0.lv !== '';
+
+    if (isFullList) {
+      // Merge index-by-index: never duplicate existing levels; keep more complete lv/loc
+      for (let i = 0; i < childList.length; i++) {
+        const ce = normEntry(childList[i]);
+        if (i < out.length) {
+          const pe = normEntry(out[i]);
+          const merged = {
+            method: ce.method || pe.method,
+            lv: ce.lv !== '' ? (isNaN(Number(ce.lv)) ? ce.lv : Number(ce.lv)) : (pe.lv !== '' ? (isNaN(Number(pe.lv)) ? pe.lv : Number(pe.lv)) : null),
+            loc: ce.loc.length >= pe.loc.length ? ce.loc : pe.loc,
+          };
+          out[i] = merged;
+        } else {
+          out.push(typeof childList[i] === 'object' ? { ...childList[i] } : childList[i]);
+        }
       }
-      return false;
-    });
-    if (dupIdx >= 0) {
-      const oldLoc = (typeof targetObtain[dupIdx] === 'object' ? targetObtain[dupIdx].loc : '') || '';
-      if (loc.length > oldLoc.length) targetObtain[dupIdx] = entry;
-    } else {
-      targetObtain.push(entry);
+      return out;
     }
+
+    // Lean format: childList only lists NEW levels gained in this job
+    for (const rawEntry of childList) {
+      const ce = normEntry(rawEntry);
+      // Skip if identical (method + lv) already exists in parent
+      const dupIdx = out.findIndex(ex => {
+        const pe = normEntry(ex);
+        return pe.method === ce.method && pe.lv === ce.lv && ce.lv !== '';
+      });
+      if (dupIdx >= 0) {
+        const pe = normEntry(out[dupIdx]);
+        if (ce.loc.length > pe.loc.length) out[dupIdx] = rawEntry;
+        continue;
+      }
+      // Replace a trailing empty placeholder row (lv == '' && loc == '') of same method
+      const emptyIdx = out.findIndex(ex => {
+        const pe = normEntry(ex);
+        return pe.lv === '' && pe.loc === '' && pe.method === ce.method;
+      });
+      if (emptyIdx >= 0 && ce.lv !== '') {
+        out[emptyIdx] = rawEntry;
+      } else {
+        out.push(rawEntry);
+      }
+    }
+    return out;
   };
 
   const parents = Array.isArray(job.inherits) ? job.inherits : (job.inherits ? [job.inherits] : []);
@@ -400,7 +440,7 @@ async function resolveInheritedSkills(job, currentKey, visited = new Set()) {
         });
       } else {
         const cur = skillMap.get(sid);
-        for (const e of (ps.obtain || [])) addEntryDedup(cur.obtain, e);
+        cur.obtain = mergeObtainLists(cur.obtain, ps.obtain || []);
       }
     }
   }
@@ -416,7 +456,7 @@ async function resolveInheritedSkills(job, currentKey, visited = new Set()) {
       });
     } else {
       const cur = skillMap.get(sid);
-      for (const e of (s.obtain || [])) addEntryDedup(cur.obtain, e);
+      cur.obtain = mergeObtainLists(cur.obtain, s.obtain || []);
     }
   }
 
