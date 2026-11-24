@@ -534,12 +534,12 @@ function buildQuestSection(data, lvChar, lvNum) {
   let stepNum = 1;
   let steps = '';
 
-  /* Step 1: รับเควสจาก NPC */
+  /* Step 1: รับเควสต์จาก NPC */
   const npcHTML   = npcChip(data.npcName);
   const locSubTxt = data.location ? zoneLinkHtml(data.location) : null;
   const routeHTML = buildRouteCard(data.location, data.routeNote);
   steps += tlStep(stepNum++, cc,
-    'รับเควสจาก NPC',
+    'รับเควสต์จาก NPC',
     data.questName
       ? `📜 <strong>${escHtml(data.questName)}</strong>`
       : 'รอการอัปเดต',
@@ -555,20 +555,20 @@ function buildQuestSection(data, lvChar, lvNum) {
       data.conditions.map(renderConditionRow).join('') +
       `</div>`;
   } else {
-    taskHTML = `<div class="task-list"><div class="task-placeholder">⚙ ข้อมูลเงื่อนไขเควสจะถูกเพิ่มในอนาคต</div></div>`;
+    taskHTML = `<div class="task-list"><div class="task-placeholder">⚙ ข้อมูลเงื่อนไขเควสต์จะถูกเพิ่มในอนาคต</div></div>`;
   }
   steps += tlStep(stepNum++, cc,
     'สิ่งที่ต้องทำ',
-    'ทำตามเงื่อนไขเควส',
+    'ทำตามเงื่อนไขเควสต์',
     null, null, taskHTML
   );
 
-  /* Step 3: ส่งเควส */
+  /* Step 3: ส่งเควสต์ */
   const submitNpc      = data.submitNpc      || data.npcName;
   const submitLocation = data.submitLocation || data.location;
   steps += tlStep(stepNum++, cc,
-    'ส่งเควส',
-    submitNpc ? npcChip(submitNpc) : 'ส่งเควสกับ NPC ที่รับมา',
+    'ส่งเควสต์',
+    submitNpc ? npcChip(submitNpc) : 'ส่งเควสต์กับ NPC ที่รับมา',
     submitLocation ? zoneLinkHtml(submitLocation) : null,
     null
   );
@@ -585,7 +585,7 @@ function buildQuestSection(data, lvChar, lvNum) {
     <div class="obtain-card quest">
       <div class="obtain-card-header">
         <span class="header-icon">📜</span>
-        <span class="header-title quest">วิธีทำสกิล — เควส</span>
+        <span class="header-title quest">วิธีทำสกิล — เควสต์</span>
       </div>
       <div class="timeline">${steps}</div>
     </div>
@@ -731,7 +731,7 @@ async function renderObtainPage() {
   const rawClv  = (params.get('clv')  || '').trim();
   const lvNum   = (rawClv && rawClv.toLowerCase() !== 'null') ? rawClv : 'รอระบุ';
 
-  const colorClass = type === 'เควส'            ? 'quest'
+  const colorClass = (type === 'เควสต์' || type === 'เควส') ? 'quest'
                    : type === 'ไอเทมดรอป'        ? 'drop'
                    : type === 'ไอเทมซื้อร้านค้า' ? 'shop'
                    : 'quest';
@@ -753,13 +753,13 @@ async function renderObtainPage() {
     <span class="lv-pill char">👤 ตัวละคร Lv.${lvNum}</span>
     <span class="lv-divider"></span>
     <span class="lv-pill ${colorClass}">${
-      colorClass === 'quest' ? '📜 เควส' :
+      colorClass === 'quest' ? '📜 เควสต์' :
       colorClass === 'drop'  ? '💎 ไอเทมดรอป' : '🛒 ซื้อร้านค้า'
     }</span>
   `;
 
   /* ── Back & Contribute btn ── */
-  const contribUrl = `contribute.html?obtainSkill=${encodeURIComponent(skillId)}&obtainLv=${encodeURIComponent(lvChar)}&obtainType=${encodeURIComponent(type || 'เควส')}`;
+  const contribUrl = `contribute.html?obtainSkill=${encodeURIComponent(skillId)}&obtainLv=${encodeURIComponent(lvChar)}&obtainType=${encodeURIComponent(type || 'เควสต์')}`;
   const topBar = `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:22px">
     <a class="back-btn" style="margin-bottom:0" onclick="history.back()">← กลับหน้าก่อนหน้า</a>
     ${skillId ? `<a class="back-btn" style="margin-bottom:0;border-color:rgba(63,200,249,0.45);color:var(--accent)" href="${contribUrl}">✏️ ช่วยเพิ่ม/แก้ไขรายละเอียดวิธีทำสกิลนี้</a>` : ''}
