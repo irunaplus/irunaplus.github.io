@@ -65,11 +65,21 @@
   }
   .obt-add-btn:hover { background: rgba(63,200,249,0.24); }
   .skill-editor-tools {
-    position: sticky; top: 68px; z-index: 20; display: flex; gap: 10px; align-items: center;
+    position: sticky; top: 68px; z-index: 20; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
     padding: 10px; margin-bottom: 14px; background: rgba(15,23,42,0.97);
     border: 1px solid var(--border); border-radius: 10px; backdrop-filter: blur(8px);
   }
   .skill-editor-tools input { flex: 1; min-width: 0; }
+  .skill-editor-kind-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+  .skill-editor-kind-filter {
+    padding: 6px 12px; border-radius: 999px; background: transparent;
+    border: 1px solid var(--border); color: var(--text-dim); cursor: pointer;
+    font: inherit; white-space: nowrap;
+  }
+  .skill-editor-kind-filter.active {
+    background: rgba(63,200,249,0.14); border-color: var(--accent); color: var(--accent);
+  }
+  .skill-editor-section[hidden], .sk-editor-card[hidden] { display: none !important; }
   .inherited-editor-jump { cursor: pointer; }
   .inherited-editor-jump:hover { border-color: var(--accent); }
   @media (max-width: 780px) {
@@ -232,17 +242,21 @@
   <div class="db-panel">
     <h3 style="color:var(--gold-light);font-size:16px;margin-bottom:14px">2. กรอกข้อมูลสกิลของอาชีพนี้</h3>
     <div class="skill-editor-tools">
+      <div class="skill-editor-kind-filters" role="group" aria-label="กรองสกิลตามการสืบทอด">
+        <button type="button" class="skill-editor-kind-filter active" data-skill-kind="inherited" aria-pressed="true" onclick="toggleEditorSkillKind('inherited')">สืบทอด</button>
+        <button type="button" class="skill-editor-kind-filter active" data-skill-kind="class" aria-pressed="true" onclick="toggleEditorSkillKind('class')">ไม่สืบทอด</button>
+      </div>
       <input class="db-input" id="skill-editor-search" type="search" placeholder="🔎 ค้นหาชื่อสกิลหรือ ID เพื่อกรอกได้เร็วขึ้น" oninput="filterEditorSkills(this.value)">
       <span class="badge" id="skill-editor-count"></span>
     </div>
-    <div style="padding:14px;border:1px solid rgba(139,92,246,0.3);border-radius:12px;margin-bottom:16px">
+    <div class="skill-editor-section" data-skill-kind="inherited" style="padding:14px;border:1px solid rgba(139,92,246,0.3);border-radius:12px;margin-bottom:16px">
       <div style="margin-bottom:12px">
         <h4 style="color:var(--accent);font-size:14px">สกิลสืบทอดจากอาชีพก่อนหน้า</h4>
         <div style="font-size:12.5px;color:var(--text-dim)">เพิ่มหรือแก้เฉพาะเลเวลใหม่ของสกิลที่สืบทอดมา รายการที่ยังไม่เพิ่มจะใช้ข้อมูลจากอาชีพก่อนหน้า</div>
       </div>
       <div id="inherited-skill-editor-list"></div>
     </div>
-    <div style="padding:14px;border:1px solid rgba(245,200,66,0.24);border-radius:12px">
+    <div class="skill-editor-section" data-skill-kind="class" style="padding:14px;border:1px solid rgba(245,200,66,0.24);border-radius:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
         <div>
           <h4 style="color:var(--gold-light);font-size:14px">สกิลประจำคลาส (ไม่ได้สืบทอด)</h4>
@@ -657,6 +671,7 @@ let CURRENT_JOB_BASE = null;
 let INHERITED_SKILLS = new Map(); // skillId -> { obtain: [...], from: label }
 let EDITOR_SKILLS = []; // [{ skillId, obtain: [{ method, lv, loc }] }]
 let EDITOR_SKILL_ROWS = new Map();
+let EDITOR_SKILL_FILTERS = new Set(['inherited', 'class']);
 let SUB_SKILLS_DRAFT = []; // [{ name, type, req, desc }]
 let EDITING_SKILL_ID = '';
 let LINK_MODAL_MODE = 'job';
@@ -1016,6 +1031,7 @@ function initializeEditorSkillRows() {
     }
   }
   document.getElementById('skill-editor-search').value = '';
+  EDITOR_SKILL_FILTERS = new Set(['inherited', 'class']);
 }
 
 async function refreshInherited() {
@@ -1070,9 +1086,11 @@ function updateSkillLevelLimitById(skillId, input) {
 }
 
 function focusEditorSkill(skillId) {
+  const kind = INHERITED_SKILLS.has(skillId) ? 'inherited' : 'class';
+  EDITOR_SKILL_FILTERS = new Set([kind]);
   const search = document.getElementById('skill-editor-search');
   search.value = '';
-  filterEditorSkills('');
+  applyEditorSkillFilters();
   const card = document.getElementById(`skill-card-${skillId}`);
   card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   if (card) {
@@ -1082,12 +1100,38 @@ function focusEditorSkill(skillId) {
 }
 
 function filterEditorSkills(query) {
-  const term = String(query || '').trim().toLowerCase();
-  for (const card of document.querySelectorAll('.sk-editor-card')) {
-    card.hidden = Boolean(term) && !card.dataset.search.includes(term);
+  document.getElementById('skill-editor-search').value = query;
+  applyEditorSkillFilters();
+}
+
+function toggleEditorSkillKind(kind) {
+  if (!['inherited', 'class'].includes(kind)) return;
+  if (EDITOR_SKILL_FILTERS.size === 2 || !EDITOR_SKILL_FILTERS.has(kind)) {
+    EDITOR_SKILL_FILTERS = new Set([kind]);
+  } else {
+    EDITOR_SKILL_FILTERS = new Set(['inherited', 'class']);
+  }
+  applyEditorSkillFilters();
+}
+
+function applyEditorSkillFilters() {
+  const term = document.getElementById('skill-editor-search').value.trim().toLowerCase();
+  for (const button of document.querySelectorAll('.skill-editor-kind-filter')) {
+    const active = EDITOR_SKILL_FILTERS.has(button.dataset.skillKind);
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  }
+  for (const section of document.querySelectorAll('.skill-editor-section')) {
+    const sectionVisible = EDITOR_SKILL_FILTERS.has(section.dataset.skillKind);
+    section.hidden = !sectionVisible;
+    for (const card of section.querySelectorAll('.sk-editor-card')) {
+      card.hidden = !sectionVisible || (Boolean(term) && !card.dataset.search.includes(term));
+    }
   }
   const visible = [...document.querySelectorAll('.sk-editor-card')].filter(card => !card.hidden).length;
-  document.getElementById('skill-editor-count').textContent = term ? `${visible} รายการ` : `${EDITOR_SKILL_ROWS.size} สกิล`;
+  const total = EDITOR_SKILL_ROWS.size;
+  document.getElementById('skill-editor-count').textContent =
+    visible === total ? `${total} สกิล` : `แสดง ${visible} จาก ${total} สกิล`;
 }
 
 function renderEditorSkills() {
@@ -1153,7 +1197,7 @@ function renderEditorSkills() {
     `<div class="empty-state" style="padding:18px">อาชีพนี้ไม่มีสกิลสืบทอด</div>`;
   classWrap.innerHTML = renderCards(classSkills) ||
     `<div class="empty-state" style="padding:18px">ยังไม่มีสกิลประจำคลาส กด “🔍 + เลือกสกิลที่มีอยู่แล้ว” หรือ “✨ + สร้างสกิลใหม่” เพื่อเพิ่มข้อมูล</div>`;
-  filterEditorSkills(document.getElementById('skill-editor-search').value);
+  applyEditorSkillFilters();
   updateJsonPreview();
 }
 
