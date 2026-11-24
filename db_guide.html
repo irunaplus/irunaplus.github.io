@@ -71,14 +71,12 @@
 DB.initSidebar();
 
 const GUIDE_LIST = [
-  { key: 'pets', label: '🐾 สัตว์เลี้ยง (Pets)' },
-  { key: 'stats', label: '📈 ค่าสถานะ (Stats)' },
-  { key: 'skills', label: '✨ สกิล (Skills)' },
-  { key: 'abilities', label: '⭐ อบิลิตี้ (☆Abilities)' },
-  { key: 'abilities2', label: '🎯 ดรอปอบิลิตี้ (Beta)' },
-  { key: 'apostolia', label: '🔮 Apostolia' },
+  { key: 'pets', label: '🐾 สัตว์เลี้ยง' },
+  { key: 'stats', label: '📈 ค่าสถานะ' },
+  { key: 'abilities', label: '⭐ อบิลิตี้' },
+  { key: 'apostolia', label: '🔮 อโพสโทเลีย' },
   { key: 'refinement', label: '🔨 การตีบวก' },
-  { key: 'raids', label: '🐉 เรดบอส (Raids)' },
+  { key: 'raids', label: '🐉 เรดบอส' },
   { key: 'lottery', label: '🎰 ลอตเตอรี่' },
   { key: 'background_music', label: '🎵 เพลงประกอบ' },
 ];
@@ -92,7 +90,7 @@ async function init() {
   }
   document.getElementById('guide-tabs').innerHTML = GUIDE_LIST.map(g =>
     `<a class="tab-pill ${g.key === PAGE_KEY ? 'active' : ''}" href="db_guide.html?page=${encodeURIComponent(g.key)}">${DB.esc(g.label)}</a>`
-  ).join('') + `<a class="tab-pill" href="db_quests.html">📜 เควสต์ (Quests)</a>`;
+  ).join('');
 
   const meta = GUIDE_LIST.find(g => g.key === PAGE_KEY) || GUIDE_LIST[0];
   document.getElementById('hero-title').textContent = meta.label;
